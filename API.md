@@ -2032,6 +2032,7 @@ const gitHubWorkflowProps: GitHubWorkflowProps = { ... }
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.preBuildSteps">preBuildSteps</a></code> | <code><a href="#cdk-pipelines-github.JobStep">JobStep</a>[]</code> | GitHub workflow steps to execute before build. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.preSynthed">preSynthed</a></code> | <code>boolean</code> | Indicates if the repository already contains a synthesized `cdk.out` directory, in which case we will simply checkout the repo in jobs that require `cdk.out`. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.publishAssetsAuthRegion">publishAssetsAuthRegion</a></code> | <code>string</code> | Will assume the GitHubActionRole in this region when publishing assets. |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.publishAssetsInParallel">publishAssetsInParallel</a></code> | <code>boolean</code> | Publish every asset from a job of its own. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.runner">runner</a></code> | <code><a href="#cdk-pipelines-github.Runner">Runner</a></code> | The type of runner to run the job on. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowName">workflowName</a></code> | <code>string</code> | Name of the workflow. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowPath">workflowPath</a></code> | <code>string</code> | File path for the GitHub workflow. |
@@ -2244,6 +2245,24 @@ This is NOT the region in which the assets are published.
 
 In most cases, you do not have to worry about this property, and can safely
 ignore it.
+
+---
+
+##### `publishAssetsInParallel`<sup>Optional</sup> <a name="publishAssetsInParallel" id="cdk-pipelines-github.GitHubWorkflowProps.property.publishAssetsInParallel"></a>
+
+```typescript
+public readonly publishAssetsInParallel: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Publish every asset from a job of its own.
+
+Each asset is a job that runs for seconds, and GitHub bills every job in
+whole minutes, so a stack with many assets costs many minutes. When `false`,
+the file assets of all stacks (including their templates) are published by
+one job and the docker assets by another, one asset after the other.
 
 ---
 
