@@ -2019,6 +2019,7 @@ const gitHubWorkflowProps: GitHubWorkflowProps = { ... }
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.synth">synth</a></code> | <code>aws-cdk-lib.pipelines.IFileSetProducer</code> | The build step that produces the CDK Cloud Assembly. |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.actionRefs">actionRefs</a></code> | <code>{[ key: string ]: string}</code> | Replace the ref of the GitHub Actions the workflow uses, for example to pin them to commit SHAs. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.awsCredentials">awsCredentials</a></code> | <code><a href="#cdk-pipelines-github.AwsCredentialsSecrets">AwsCredentialsSecrets</a></code> | Names of GitHub repository secrets that include AWS credentials for deployment. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.awsCreds">awsCreds</a></code> | <code><a href="#cdk-pipelines-github.AwsCredentialsProvider">AwsCredentialsProvider</a></code> | Configure provider for AWS credentials used for deployment. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.buildContainer">buildContainer</a></code> | <code><a href="#cdk-pipelines-github.ContainerOptions">ContainerOptions</a></code> | Build container options. |
@@ -2056,6 +2057,34 @@ If you use a `ShellStep` here and you don't configure an output directory,
 the output directory will automatically be assumed to be `cdk.out`.
 
 ---
+
+##### `actionRefs`<sup>Optional</sup> <a name="actionRefs" id="cdk-pipelines-github.GitHubWorkflowProps.property.actionRefs"></a>
+
+```typescript
+public readonly actionRefs: {[ key: string ]: string};
+```
+
+- *Type:* {[ key: string ]: string}
+- *Default:* actions are used with the refs this library and your steps specify
+
+Replace the ref of the GitHub Actions the workflow uses, for example to pin them to commit SHAs.
+
+Keys are the action as written before the `@` in a `uses:` (`owner/repo`,
+or `owner/repo/path` for an action in a subdirectory) and values are the ref
+to use after it, such as a commit SHA or a tag. The ref is applied to every
+step-level and job-level `uses` in the rendered workflow, including steps
+you supply yourself (`preBuildSteps`, `postBuildSteps`, `GitHubActionStep`).
+Local (`./`) and `docker://` references are never changed, and an entry that
+matches nothing is ignored.
+
+---
+
+*Example*
+
+```typescript
+const actionRefs = { 'actions/checkout': '0123456789abcdef0123456789abcdef01234567' };
+```
+
 
 ##### ~~`awsCredentials`~~<sup>Optional</sup> <a name="awsCredentials" id="cdk-pipelines-github.GitHubWorkflowProps.property.awsCredentials"></a>
 
