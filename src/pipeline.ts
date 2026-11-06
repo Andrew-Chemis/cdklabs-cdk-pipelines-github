@@ -48,6 +48,17 @@ export interface JobSettings {
    * @see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idif
    */
   readonly if?: string;
+
+  /**
+   * jobs.<job_id>.timeout-minutes.
+   *
+   * The maximum number of minutes to let a job run before GitHub automatically
+   * cancels it. Must be a whole number of at least 1.
+   *
+   * @see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
+   * @default - GitHub's default (360 minutes)
+   */
+  readonly timeoutMinutes?: number;
 }
 
 /**
@@ -176,8 +187,8 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
 
   /**
    * Job level settings that will be applied to all jobs in the workflow,
-   * including synth and asset deploy jobs. Currently the only valid setting
-   * is 'if'. You can use this to run jobs only in specific repositories.
+   * including synth and asset deploy jobs. The valid settings are 'if' and
+   * 'timeoutMinutes'. You can use 'if' to run jobs only in specific repositories.
    *
    * @see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-only-run-job-for-specific-repository
    */
@@ -234,6 +245,7 @@ export class GitHubWorkflow extends PipelineBase {
     this.buildContainer = props.buildContainer;
     this.preBuildSteps = props.preBuildSteps ?? [];
     this.postBuildSteps = props.postBuildSteps ?? [];
+    validateJobSettings(props.jobSettings);
     this.jobSettings = props.jobSettings;
     this.dockerAssetJobSettings = props.dockerAssetJobSettings;
 
@@ -384,6 +396,7 @@ export class GitHubWorkflow extends PipelineBase {
 
   private addStackProps(stacks: StackDeployment[], key: string, value: any) {
     if (value === undefined) { return; }
+    if (key === 'settings') { validateJobSettings(value); }
     for (const stack of stacks) {
       this.stackProperties[stack.stackArtifactId] = {
         ...this.stackProperties[stack.stackArtifactId],
@@ -951,6 +964,13 @@ export class GitHubWorkflow extends PipelineBase {
       return { environment: environment.name };
     }
     return { environment };
+  }
+}
+
+function validateJobSettings(settings?: JobSettings) {
+  const minutes = settings?.timeoutMinutes;
+  if (minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1)) {
+    throw new Error(`jobSettings.timeoutMinutes must be a whole number of at least 1, got ${minutes}`);
   }
 }
 
