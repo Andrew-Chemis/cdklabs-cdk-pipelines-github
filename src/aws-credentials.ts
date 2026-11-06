@@ -16,17 +16,29 @@ export interface GitHubSecretsProviderProps {
   /**
    * @default "AWS_ACCESS_KEY_ID"
    */
-  readonly accessKeyId: string;
+  readonly accessKeyId?: string;
 
   /**
    * @default "AWS_SECRET_ACCESS_KEY"
    */
-  readonly secretAccessKey: string;
+  readonly secretAccessKey?: string;
 
   /**
    * @default - no session token is used
    */
   readonly sessionToken?: string;
+
+  /**
+   * Whether to pass `role-external-id: Pipeline` to `configure-aws-credentials`
+   * when a CDK bootstrap role is assumed.
+   *
+   * Set this to `false` for bootstrap stacks whose roles do not accept an
+   * external ID (bootstrap template version 29), where assuming the role is
+   * denied when one is present.
+   *
+   * @default true
+   */
+  readonly useRoleExternalId?: boolean;
 }
 
 /**
@@ -36,12 +48,14 @@ class GitHubSecretsProvider extends AwsCredentialsProvider {
   private readonly accessKeyId: string;
   private readonly secretAccessKey: string;
   private readonly sessionToken?: string;
+  private readonly useRoleExternalId: boolean;
 
   constructor(props?: GitHubSecretsProviderProps) {
     super();
     this.accessKeyId = props?.accessKeyId ?? 'AWS_ACCESS_KEY_ID';
     this.secretAccessKey = props?.secretAccessKey ?? 'AWS_SECRET_ACCESS_KEY';
     this.sessionToken = props?.sessionToken;
+    this.useRoleExternalId = props?.useRoleExternalId ?? true;
   }
 
   public jobPermission(): github.JobPermission {
@@ -59,7 +73,7 @@ class GitHubSecretsProvider extends AwsCredentialsProvider {
         } : undefined),
         ...(assumeRoleArn ? {
           roleToAssume: assumeRoleArn,
-          roleExternalId: 'Pipeline',
+          ...(this.useRoleExternalId ? { roleExternalId: 'Pipeline' } : undefined),
         } : undefined),
       }),
     ];
@@ -85,6 +99,18 @@ export interface OpenIdConnectProviderProps {
    * @default - no role session name
    */
   readonly roleSessionName?: string;
+
+  /**
+   * Whether to pass `role-external-id: Pipeline` to `configure-aws-credentials`
+   * when a CDK bootstrap role is assumed.
+   *
+   * Set this to `false` for bootstrap stacks whose roles do not accept an
+   * external ID (bootstrap template version 29), where assuming the role is
+   * denied when one is present.
+   *
+   * @default true
+   */
+  readonly useRoleExternalId?: boolean;
 }
 
 /**
@@ -93,11 +119,13 @@ export interface OpenIdConnectProviderProps {
 class OpenIdConnectProvider extends AwsCredentialsProvider {
   private readonly gitHubActionRoleArn: string;
   private readonly roleSessionName: string | undefined;
+  private readonly useRoleExternalId: boolean;
 
   constructor(props: OpenIdConnectProviderProps) {
     super();
     this.gitHubActionRoleArn = props.gitHubActionRoleArn;
     this.roleSessionName = props.roleSessionName;
+    this.useRoleExternalId = props.useRoleExternalId ?? true;
   }
 
   public jobPermission(): github.JobPermission {
@@ -128,7 +156,7 @@ class OpenIdConnectProvider extends AwsCredentialsProvider {
           secretAccessKey: '${{ env.AWS_SECRET_ACCESS_KEY }}',
           sessionToken: '${{ env.AWS_SESSION_TOKEN }}',
           roleToAssume: getDeployRole(assumeRoleArn),
-          roleExternalId: 'Pipeline',
+          roleExternalId: this.useRoleExternalId ? 'Pipeline' : undefined,
         }),
       );
     }
