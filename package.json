@@ -1,13 +1,12 @@
 {
-  "name": "cdk-pipelines-github",
+  "name": "@Andrew-Chemis/cdk-pipelines-github",
   "description": "GitHub Workflows support for CDK Pipelines",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cdklabs/cdk-pipelines-github.git"
+    "url": "https://github.com/Andrew-Chemis/cdklabs-cdk-pipelines-github.git"
   },
   "scripts": {
     "build": "projen build",
-    "bump": "projen bump",
     "clobber": "projen clobber",
     "compat": "projen compat",
     "compile": "projen compile",
@@ -15,26 +14,20 @@
     "docgen": "projen docgen",
     "eject": "projen eject",
     "eslint": "projen eslint",
+    "fork-checks": "projen fork-checks",
     "integ": "projen integ",
     "integ:update": "projen integ:update",
     "package": "projen package",
     "package-all": "projen package-all",
-    "package:dotnet": "projen package:dotnet",
-    "package:go": "projen package:go",
-    "package:java": "projen package:java",
     "package:js": "projen package:js",
-    "package:python": "projen package:python",
     "post-compile": "projen post-compile",
     "post-upgrade": "projen post-upgrade",
     "pre-compile": "projen pre-compile",
-    "release": "projen release",
     "rosetta:extract": "projen rosetta:extract",
     "test": "projen test",
     "test:update": "projen test:update",
     "test:watch": "projen test:watch",
-    "unbump": "projen unbump",
     "upgrade": "projen upgrade",
-    "upgrade-cdklabs-projen-project-types": "projen upgrade-cdklabs-projen-project-types",
     "upgrade-dev-deps": "projen upgrade-dev-deps",
     "watch": "projen watch",
     "projen": "projen"
@@ -47,6 +40,10 @@
   "devDependencies": {
     "@aws-cdk/integ-runner": "latest",
     "@aws-cdk/integ-tests-alpha": "2.80.0-alpha.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/github": "^12.0.0",
+    "@semantic-release/release-notes-generator": "^14.1.0",
     "@stylistic/eslint-plugin": "^2",
     "@types/jest": "^27",
     "@types/node": "^18",
@@ -54,8 +51,8 @@
     "@typescript-eslint/parser": "^8",
     "aws-cdk-lib": "2.80.0",
     "cdklabs-projen-project-types": "^0.3.29",
-    "commit-and-tag-version": "^12",
     "constructs": "10.0.46",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
     "eslint": "^9",
     "eslint-import-resolver-typescript": "^2.7.1",
     "eslint-plugin-import": "^2.32.0",
@@ -67,6 +64,7 @@
     "jsii-pacmak": "^1.141.0",
     "jsii-rosetta": "^5.9.70",
     "projen": "^0.99.51",
+    "semantic-release": "^25.0.9",
     "ts-jest": "^27",
     "ts-node": "^10.9.2",
     "typescript": "^4.9.5"
@@ -100,7 +98,7 @@
   "main": "lib/index.js",
   "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "registry": "https://npm.pkg.github.com/"
   },
   "version": "0.0.0",
   "jest": {
@@ -108,6 +106,7 @@
     "testMatch": [
       "<rootDir>/test/**/*(*.)@(spec|test).ts?(x)",
       "<rootDir>/src/**/*(*.)@(spec|test).ts?(x)",
+      "<rootDir>/scripts/fork-checks/**/*(*.)@(spec|test).ts?(x)",
       "<rootDir>/@(src|test)/**/*(*.)@(spec|test).ts?(x)",
       "<rootDir>/@(src|test)/**/__tests__/**/*.ts?(x)",
       "<rootDir>/@(projenrc)/**/*(*.)@(spec|test).ts?(x)",
@@ -152,26 +151,7 @@
   "stability": "experimental",
   "jsii": {
     "outdir": "dist",
-    "targets": {
-      "java": {
-        "package": "io.github.cdklabs.cdkpipelines.github",
-        "maven": {
-          "groupId": "io.github.cdklabs",
-          "artifactId": "cdk-pipelines-github"
-        }
-      },
-      "python": {
-        "distName": "cdk-pipelines-github",
-        "module": "cdk_pipelines_github"
-      },
-      "dotnet": {
-        "namespace": "Cdklabs.CdkPipelinesGitHub",
-        "packageId": "Cdklabs.CdkPipelinesGitHub"
-      },
-      "go": {
-        "moduleName": "github.com/cdklabs/cdk-pipelines-github-go"
-      }
-    },
+    "targets": {},
     "tsc": {
       "outDir": "lib",
       "rootDir": "src"

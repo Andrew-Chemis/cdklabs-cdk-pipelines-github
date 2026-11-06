@@ -1,6 +1,26 @@
 {
   "dependencies": [
     {
+      "name": "@semantic-release/commit-analyzer",
+      "version": "^13.0.1",
+      "type": "build"
+    },
+    {
+      "name": "@semantic-release/exec",
+      "version": "^7.1.0",
+      "type": "build"
+    },
+    {
+      "name": "@semantic-release/github",
+      "version": "^12.0.0",
+      "type": "build"
+    },
+    {
+      "name": "@semantic-release/release-notes-generator",
+      "version": "^14.1.0",
+      "type": "build"
+    },
+    {
       "name": "@stylistic/eslint-plugin",
       "version": "^2",
       "type": "build"
@@ -29,8 +49,8 @@
       "type": "build"
     },
     {
-      "name": "commit-and-tag-version",
-      "version": "^12",
+      "name": "conventional-changelog-conventionalcommits",
+      "version": "^9.3.1",
       "type": "build"
     },
     {
@@ -79,6 +99,11 @@
     },
     {
       "name": "projen",
+      "type": "build"
+    },
+    {
+      "name": "semantic-release",
+      "version": "^25.0.9",
       "type": "build"
     },
     {

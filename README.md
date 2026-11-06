@@ -10,6 +10,62 @@
 > announced in the release notes. This means that while you may use them, you may need to update
 > your source code when upgrading to a newer version of this package.
 
+## Using this fork
+
+This is the `Andrew-Chemis` fork of
+[cdklabs/cdk-pipelines-github](https://github.com/cdklabs/cdk-pipelines-github).
+It is published to GitHub Packages as `@Andrew-Chemis/cdk-pipelines-github`, not
+to npm, PyPI, Maven or NuGet. Use either this package or upstream's
+`cdk-pipelines-github` in a project, never both: the library checks
+`instanceof GitHubStage` and `instanceof GitHubActionStep`, so a stage built
+from one package is silently ignored by the other's workflow.
+
+### Install
+
+1. Point the scope at GitHub Packages in the project's `.npmrc`:
+
+   ```ini
+   @Andrew-Chemis:registry=https://npm.pkg.github.com
+   //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+   ```
+
+2. Provide `NODE_AUTH_TOKEN`. In GitHub Actions use
+   `${{ secrets.GITHUB_TOKEN }}` and grant the job `packages: read`; the
+   repository must be listed under the package's "Manage Actions access"
+   setting. Locally, use a personal access token with `read:packages`.
+3. Install it, and import from the scoped name instead of `cdk-pipelines-github`:
+
+   ```bash
+   npm install @Andrew-Chemis/cdk-pipelines-github
+   ```
+
+   ```text
+   import { GitHubWorkflow } from '@Andrew-Chemis/cdk-pipelines-github';
+   ```
+
+   With pnpm, a `minimumReleaseAge` policy needs
+   `minimumReleaseAgeExclude: ['@Andrew-Chemis/*']`.
+
+### What the fork changes
+
+- Versions are `0.1.x` with git tags `ac-v<version>`, and every change is a
+  patch. `0.1.1` has the same `src/` as upstream `v0.4.139`.
+- Every addition is an option that defaults to upstream's current output.
+  [`UPSTREAM.md`](./UPSTREAM.md) lists each one with its upstream issue and PR.
+- This package holds behavior that makes sense to any user of upstream's
+  package. Estate policy (which defaults, which checks fail synth, naming
+  schemes) lives in `@Andrew-Chemis/cdk-constructs` and
+  `@Andrew-Chemis/cdk-pipelines-projen`, which set this package's options.
+
+### Branches
+
+`main` mirrors upstream. `feat/<topic>` branches are cut from `main` and are
+meant to become upstream pull requests. `distribution` is the default branch:
+`main` plus the packaging, the release workflow, `UPSTREAM.md` and this
+section. Merge feature pull requests into `distribution` with a merge commit,
+not a squash, and sync `main` into `distribution` by merge. If a merge conflicts
+in `API.md`, regenerate it with `node_modules/.bin/projen docgen`.
+
 A construct library for painless Continuous Delivery of CDK applications,
 deployed via
 [GitHub Workflows](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).
