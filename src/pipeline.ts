@@ -175,6 +175,18 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
   readonly publishAssetsAuthRegion?: string;
 
   /**
+   * Publish every asset from a job of its own.
+   *
+   * Each asset is a job that runs for seconds, and GitHub bills every job in
+   * whole minutes, so a stack with many assets costs many minutes. When `false`,
+   * the file assets of all stacks (including their templates) are published by
+   * one job and the docker assets by another, one asset after the other.
+   *
+   * @default true
+   */
+  readonly publishAssetsInParallel?: boolean;
+
+  /**
    * Job level settings that will be applied to all jobs in the workflow,
    * including synth and asset deploy jobs. Currently the only valid setting
    * is 'if'. You can use this to run jobs only in specific repositories.
@@ -209,9 +221,10 @@ export class GitHubWorkflow extends PipelineBase {
   private readonly preBuildSteps: github.JobStep[];
   private readonly postBuildSteps: github.JobStep[];
   private readonly jobOutputs: Record<string, github.JobStepOutput[]> = {};
-  private readonly assetHashMap: Record<string, string> = {};
+  private readonly assetHashMap: Record<string, { jobId: string; outputName: string }> = {};
   private readonly runner: github.Runner;
   private readonly publishAssetsAuthRegion: string;
+  private readonly publishAssetsInParallel: boolean;
   private readonly stackProperties: Record<
     string,
     {
@@ -265,6 +278,7 @@ export class GitHubWorkflow extends PipelineBase {
 
     this.runner = props.runner ?? github.Runner.UBUNTU_LATEST;
     this.publishAssetsAuthRegion = props.publishAssetsAuthRegion ?? 'us-west-2';
+    this.publishAssetsInParallel = props.publishAssetsInParallel ?? true;
   }
 
   /**
@@ -406,6 +420,7 @@ export class GitHubWorkflow extends PipelineBase {
       selfMutation: false,
       publishTemplate: true,
       prepareStep: false, // we create and execute the changeset in a single job
+      singlePublisherPerAssetType: !this.publishAssetsInParallel,
     });
 
     for (const stageNode of flatten(structure.graph.sortedChildren())) {
@@ -572,9 +587,15 @@ export class GitHubWorkflow extends PipelineBase {
       return `npx cdk-assets --path "${relativeToAssembly(asset.assetManifestPath)}" --verbose publish "${asset.assetSelector}"`;
     }));
 
-    // we need the jobId to reference the outputs later
-    this.assetHashMap[assetId] = jobId;
-    fileContents.push(`echo '${ASSET_HASH_NAME}=${assetId}' >> $GITHUB_OUTPUT`);
+    // The deploy jobs reference the hash of their stack's template through an
+    // output of the job that publishes it, so remember which job and output.
+    const hashOutputs = this.publishAssetsInParallel
+      ? [{ assetId, outputName: ASSET_HASH_NAME }]
+      : this.templateHashOutputs(assets);
+    for (const output of hashOutputs) {
+      this.assetHashMap[output.assetId] = { jobId, outputName: output.outputName };
+      fileContents.push(`echo '${output.outputName}=${output.assetId}' >> $GITHUB_OUTPUT`);
+    }
 
     const publishStepFile = posixPath(path.join(path.dirname(relativeToAssembly(assetManifestPath)), `publish-${jobId}-step.sh`));
     mkdirSync(path.dirname(publishStepFile), { recursive: true });
@@ -594,9 +615,12 @@ export class GitHubWorkflow extends PipelineBase {
         needs: this.renderDependencies(node),
         permissions,
         runsOn: this.runner.runsOn,
-        outputs: {
-          [ASSET_HASH_NAME]: `\${{ steps.Publish.outputs.${ASSET_HASH_NAME} }}`,
-        },
+        ...(hashOutputs.length > 0 ? {
+          outputs: Object.fromEntries(hashOutputs.map(({ outputName }) => [
+            outputName,
+            `\${{ steps.Publish.outputs.${outputName} }}`,
+          ])),
+        } : {}),
         steps: [
           ...this.stepsToDownloadAssembly(cdkoutDir),
           {
@@ -610,6 +634,35 @@ export class GitHubWorkflow extends PipelineBase {
         ],
       },
     };
+  }
+
+  /**
+   * The outputs of a job that publishes many assets: one for each stack template.
+   *
+   * The name comes from the stack's asset manifest, not from the hash of the
+   * template, so adding or changing an asset does not change the workflow.
+   * Names that collide get a numeric suffix. Stacks with the same template share
+   * one asset, and so one output.
+   */
+  private templateHashOutputs(assets: StackAsset[]): Array<{ assetId: string; outputName: string }> {
+    const outputs: Array<{ assetId: string; outputName: string }> = [];
+    const names = new Set<string>();
+    for (const asset of assets) {
+      if (!asset.isTemplate || outputs.some((o) => o.assetId === asset.assetId)) {
+        continue;
+      }
+      // Lower case: the keys of a job's outputs are converted from camel case when the
+      // workflow is rendered, and the reference to the output must use the converted name.
+      const stackName = path.basename(asset.assetManifestPath).replace(/\.assets\.json$/, '').replace(/[^A-Za-z0-9_-]/g, '_').toLowerCase();
+      const base = `${ASSET_HASH_NAME}-${stackName}`;
+      let outputName = base;
+      for (let suffix = 2; names.has(outputName); suffix++) {
+        outputName = `${base}-${suffix}`;
+      }
+      names.add(outputName);
+      outputs.push({ assetId: asset.assetId, outputName });
+    }
+    return outputs;
   }
 
   private jobForDeploy(node: AGraphNode, stack: StackDeployment, _captureOutputs: boolean): Job {
@@ -634,10 +687,11 @@ export class GitHubWorkflow extends PipelineBase {
 
     const replaceAssetHash = (template: string) => {
       const hash = path.parse(template.split('/').pop() ?? '').name;
-      if (this.assetHashMap[hash] === undefined) {
+      const publisher = this.assetHashMap[hash];
+      if (publisher === undefined) {
         throw new Error(`Template asset hash ${hash} not found.`);
       }
-      const updated_template = template.replace(hash, `\${{ needs.${this.assetHashMap[hash]}.outputs.${ASSET_HASH_NAME} }}`);
+      const updated_template = template.replace(hash, `\${{ needs.${publisher.jobId}.outputs.${publisher.outputName} }}`);
       return process.env.CDK_AWS_PARTITION == 'aws-cn'
         ? updated_template.replace('.amazonaws.com', '.amazonaws.com.cn')
         : updated_template;
