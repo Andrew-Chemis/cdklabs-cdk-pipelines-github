@@ -90,6 +90,15 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
   readonly cdkAssetsVersion?: string;
 
   /**
+   * Pass `--ignore-scripts` to the `npm install` of `cdk-assets` in the asset
+   * publishing jobs, so that lifecycle scripts of `cdk-assets` and its
+   * dependencies do not run on a runner that holds a checkout of the repository.
+   *
+   * @default false
+   */
+  readonly cdkAssetsInstallIgnoreScripts?: boolean;
+
+  /**
    * Indicates if the repository already contains a synthesized `cdk.out` directory, in which
    * case we will simply checkout the repo in jobs that require `cdk.out`.
    *
@@ -205,6 +214,7 @@ export class GitHubWorkflow extends PipelineBase {
   private readonly awsCredentials: AwsCredentialsProvider;
   private readonly dockerCredentials: DockerCredential[];
   private readonly cdkAssetsVersion?: string;
+  private readonly cdkAssetsInstallIgnoreScripts: boolean;
   private readonly buildContainer?: github.ContainerOptions;
   private readonly preBuildSteps: github.JobStep[];
   private readonly postBuildSteps: github.JobStep[];
@@ -230,6 +240,7 @@ export class GitHubWorkflow extends PipelineBase {
     super(scope, id, props);
 
     this.cdkAssetsVersion = props.cdkAssetsVersion;
+    this.cdkAssetsInstallIgnoreScripts = props.cdkAssetsInstallIgnoreScripts ?? false;
     this.preSynthed = props.preSynthed ?? false;
     this.buildContainer = props.buildContainer;
     this.preBuildSteps = props.preBuildSteps ?? [];
@@ -539,6 +550,7 @@ export class GitHubWorkflow extends PipelineBase {
     }
 
     const installSuffix = this.cdkAssetsVersion ? `@${this.cdkAssetsVersion}` : '';
+    const installFlags = this.cdkAssetsInstallIgnoreScripts ? ' --ignore-scripts' : '';
     const cdkoutDir = options.assemblyDir;
     const jobId = node.uniqueId;
     const { assetId, assetManifestPath } = assets[0];
@@ -601,7 +613,7 @@ export class GitHubWorkflow extends PipelineBase {
           ...this.stepsToDownloadAssembly(cdkoutDir),
           {
             name: 'Install',
-            run: `npm install --no-save cdk-assets${installSuffix}`,
+            run: `npm install --no-save${installFlags} cdk-assets${installSuffix}`,
           },
           ...this.stepsToConfigureAws(this.publishAssetsAuthRegion),
           ...dockerLoginSteps,

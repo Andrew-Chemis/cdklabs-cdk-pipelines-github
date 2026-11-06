@@ -2022,6 +2022,7 @@ const gitHubWorkflowProps: GitHubWorkflowProps = { ... }
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.awsCredentials">awsCredentials</a></code> | <code><a href="#cdk-pipelines-github.AwsCredentialsSecrets">AwsCredentialsSecrets</a></code> | Names of GitHub repository secrets that include AWS credentials for deployment. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.awsCreds">awsCreds</a></code> | <code><a href="#cdk-pipelines-github.AwsCredentialsProvider">AwsCredentialsProvider</a></code> | Configure provider for AWS credentials used for deployment. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.buildContainer">buildContainer</a></code> | <code><a href="#cdk-pipelines-github.ContainerOptions">ContainerOptions</a></code> | Build container options. |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.cdkAssetsInstallIgnoreScripts">cdkAssetsInstallIgnoreScripts</a></code> | <code>boolean</code> | Pass `--ignore-scripts` to the `npm install` of `cdk-assets` in the asset publishing jobs, so that lifecycle scripts of `cdk-assets` and its dependencies do not run on a runner that holds a checkout of the repository. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.cdkAssetsVersion">cdkAssetsVersion</a></code> | <code>string</code> | Version of the [cdk-assets package](https://www.npmjs.com/package/cdk-assets) to use. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.concurrency">concurrency</a></code> | <code><a href="#cdk-pipelines-github.ConcurrencyOptions">ConcurrencyOptions</a></code> | GitHub workflow concurrency. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.dockerAssetJobSettings">dockerAssetJobSettings</a></code> | <code><a href="#cdk-pipelines-github.DockerAssetJobSettings">DockerAssetJobSettings</a></code> | Job level settings applied to all docker asset publishing jobs in the workflow. |
@@ -2095,6 +2096,19 @@ public readonly buildContainer: ContainerOptions;
 - *Default:* GitHub defaults
 
 Build container options.
+
+---
+
+##### `cdkAssetsInstallIgnoreScripts`<sup>Optional</sup> <a name="cdkAssetsInstallIgnoreScripts" id="cdk-pipelines-github.GitHubWorkflowProps.property.cdkAssetsInstallIgnoreScripts"></a>
+
+```typescript
+public readonly cdkAssetsInstallIgnoreScripts: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Pass `--ignore-scripts` to the `npm install` of `cdk-assets` in the asset publishing jobs, so that lifecycle scripts of `cdk-assets` and its dependencies do not run on a runner that holds a checkout of the repository.
 
 ---
 
