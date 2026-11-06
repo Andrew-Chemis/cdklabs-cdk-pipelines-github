@@ -84,6 +84,32 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
   readonly concurrency?: github.ConcurrencyOptions;
 
   /**
+   * Permissions of the workflow, rendered as its top-level `permissions`.
+   *
+   * Jobs that set their own permissions (all the jobs this library creates do)
+   * are not affected by it, but it is the default for any job that does not,
+   * such as a job added with a custom step. An empty object renders
+   * `permissions: {}`, which grants nothing by default; it is not the same as
+   * leaving the property unset, which renders no `permissions` key.
+   *
+   * @example const workflowPermissions = {};
+   * @default - no top-level `permissions`
+   */
+  readonly workflowPermissions?: github.JobPermissions;
+
+  /**
+   * Whether the synthesize job may use the AWS credentials of the workflow.
+   *
+   * The job does not use them itself, but pre-build steps and the synth step
+   * can. With OpenID Connect credentials the job is granted the `id-token`
+   * permission so that they can. Set to `false` to leave `id-token` out of the
+   * synthesize job's permissions entirely.
+   *
+   * @default true
+   */
+  readonly synthUsesAwsCredentials?: boolean;
+
+  /**
    * Version of the [cdk-assets package](https://www.npmjs.com/package/cdk-assets) to use.
    * @default - automatic
    */
@@ -201,6 +227,8 @@ export class GitHubWorkflow extends PipelineBase {
 
   private readonly workflowTriggers: github.WorkflowTriggers;
   private readonly concurrency?: github.ConcurrencyOptions;
+  private readonly workflowPermissions?: github.JobPermissions;
+  private readonly synthUsesAwsCredentials: boolean;
   private readonly preSynthed: boolean;
   private readonly awsCredentials: AwsCredentialsProvider;
   private readonly dockerCredentials: DockerCredential[];
@@ -262,6 +290,9 @@ export class GitHubWorkflow extends PipelineBase {
         cancelInProgress: props.concurrency.cancelInProgress ?? false,
       };
     }
+
+    this.workflowPermissions = props.workflowPermissions;
+    this.synthUsesAwsCredentials = props.synthUsesAwsCredentials ?? true;
 
     this.runner = props.runner ?? github.Runner.UBUNTU_LATEST;
     this.publishAssetsAuthRegion = props.publishAssetsAuthRegion ?? 'us-west-2';
@@ -450,6 +481,7 @@ export class GitHubWorkflow extends PipelineBase {
           'cancel-in-progress': this.concurrency.cancelInProgress,
         },
       } : {}),
+      ...(this.workflowPermissions ? { permissions: snakeCaseKeys(this.workflowPermissions) } : {}),
       jobs: jobmap,
     };
 
@@ -717,7 +749,7 @@ export class GitHubWorkflow extends PipelineBase {
           contents: github.JobPermission.READ,
           // The Synthesize job does not use the GitHub Action Role on its own, but it's possible
           // that it is being used in the preBuildSteps.
-          idToken: this.awsCredentials.jobPermission(),
+          ...(this.synthUsesAwsCredentials ? { idToken: this.awsCredentials.jobPermission() } : {}),
         },
         runsOn: this.runner.runsOn,
         needs: this.renderDependencies(node),
