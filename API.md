@@ -2033,8 +2033,10 @@ const gitHubWorkflowProps: GitHubWorkflowProps = { ... }
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.preSynthed">preSynthed</a></code> | <code>boolean</code> | Indicates if the repository already contains a synthesized `cdk.out` directory, in which case we will simply checkout the repo in jobs that require `cdk.out`. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.publishAssetsAuthRegion">publishAssetsAuthRegion</a></code> | <code>string</code> | Will assume the GitHubActionRole in this region when publishing assets. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.runner">runner</a></code> | <code><a href="#cdk-pipelines-github.Runner">Runner</a></code> | The type of runner to run the job on. |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.synthUsesAwsCredentials">synthUsesAwsCredentials</a></code> | <code>boolean</code> | Whether the synthesize job may use the AWS credentials of the workflow. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowName">workflowName</a></code> | <code>string</code> | Name of the workflow. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowPath">workflowPath</a></code> | <code>string</code> | File path for the GitHub workflow. |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowPermissions">workflowPermissions</a></code> | <code><a href="#cdk-pipelines-github.JobPermissions">JobPermissions</a></code> | Permissions of the workflow, rendered as its top-level `permissions`. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowTriggers">workflowTriggers</a></code> | <code><a href="#cdk-pipelines-github.WorkflowTriggers">WorkflowTriggers</a></code> | GitHub workflow triggers. |
 
 ---
@@ -2263,6 +2265,24 @@ GitHub-hosted runner or a self-hosted runner.
 
 ---
 
+##### `synthUsesAwsCredentials`<sup>Optional</sup> <a name="synthUsesAwsCredentials" id="cdk-pipelines-github.GitHubWorkflowProps.property.synthUsesAwsCredentials"></a>
+
+```typescript
+public readonly synthUsesAwsCredentials: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Whether the synthesize job may use the AWS credentials of the workflow.
+
+The job does not use them itself, but pre-build steps and the synth step
+can. With OpenID Connect credentials the job is granted the `id-token`
+permission so that they can. Set to `false` to leave `id-token` out of the
+synthesize job's permissions entirely.
+
+---
+
 ##### `workflowName`<sup>Optional</sup> <a name="workflowName" id="cdk-pipelines-github.GitHubWorkflowProps.property.workflowName"></a>
 
 ```typescript
@@ -2288,6 +2308,32 @@ public readonly workflowPath: string;
 File path for the GitHub workflow.
 
 ---
+
+##### `workflowPermissions`<sup>Optional</sup> <a name="workflowPermissions" id="cdk-pipelines-github.GitHubWorkflowProps.property.workflowPermissions"></a>
+
+```typescript
+public readonly workflowPermissions: JobPermissions;
+```
+
+- *Type:* <a href="#cdk-pipelines-github.JobPermissions">JobPermissions</a>
+- *Default:* no top-level `permissions`
+
+Permissions of the workflow, rendered as its top-level `permissions`.
+
+Jobs that set their own permissions (all the jobs this library creates do)
+are not affected by it, but it is the default for any job that does not,
+such as a job added with a custom step. An empty object renders
+`permissions: {}`, which grants nothing by default; it is not the same as
+leaving the property unset, which renders no `permissions` key.
+
+---
+
+*Example*
+
+```typescript
+const workflowPermissions = {};
+```
+
 
 ##### `workflowTriggers`<sup>Optional</sup> <a name="workflowTriggers" id="cdk-pipelines-github.GitHubWorkflowProps.property.workflowTriggers"></a>
 
