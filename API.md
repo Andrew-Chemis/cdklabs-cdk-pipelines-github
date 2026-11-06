@@ -1475,11 +1475,28 @@ const gitHubActionRoleProps: GitHubActionRoleProps = { ... }
 
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleProps.property.audience">audience</a></code> | <code>string</code> | The `aud` claim a GitHub token must carry to assume the role, enforced with a `StringEquals` condition next to the `sub` condition. |
 | <code><a href="#cdk-pipelines-github.GitHubActionRoleProps.property.provider">provider</a></code> | <code>aws-cdk-lib.aws_iam.IOpenIdConnectProvider</code> | The GitHub OpenId Connect Provider. Must have provider url `https://token.actions.githubusercontent.com`. The audience must be `sts:amazonaws.com`. |
 | <code><a href="#cdk-pipelines-github.GitHubActionRoleProps.property.repos">repos</a></code> | <code>string[]</code> | A list of GitHub repositories you want to be able to access the IAM role. |
 | <code><a href="#cdk-pipelines-github.GitHubActionRoleProps.property.roleName">roleName</a></code> | <code>string</code> | The name of the Oidc role. |
 | <code><a href="#cdk-pipelines-github.GitHubActionRoleProps.property.subjectClaims">subjectClaims</a></code> | <code>string[]</code> | A list of subject claims allowed to access the IAM role. |
 | <code><a href="#cdk-pipelines-github.GitHubActionRoleProps.property.thumbprints">thumbprints</a></code> | <code>string[]</code> | Thumbprints of GitHub's certificates. |
+
+---
+
+##### `audience`<sup>Optional</sup> <a name="audience" id="cdk-pipelines-github.GitHubActionRoleProps.property.audience"></a>
+
+```typescript
+public readonly audience: string;
+```
+
+- *Type:* string
+- *Default:* 'sts.amazonaws.com'
+
+The `aud` claim a GitHub token must carry to assume the role, enforced with a `StringEquals` condition next to the `sub` condition.
+
+Set it only when the workflow requests a custom audience (the `audience`
+input of `aws-actions/configure-aws-credentials`).
 
 ---
 
@@ -1513,6 +1530,9 @@ Each entry should be your GitHub username and repository passed in as a
 single string.
 An entry `owner/repo` is equivalent to the subjectClaim `repo:owner/repo:*`.
 
+An entry must name one repository: an entry containing `*` is rejected,
+because it would let repositories that were not named assume the role.
+
 For example, `['owner/repo1', 'owner/repo2'].
 
 ---
@@ -1543,6 +1563,10 @@ A list of subject claims allowed to access the IAM role.
 See https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect
 A subject claim can include `*` and `?` wildcards according to the `StringLike`
 condition operator.
+
+A claim that is exactly `*`, or that starts with `repo:*`, is rejected,
+because it would trust any repository. A wildcard after the repository,
+such as `repo:owner/repo1:ref:refs/heads/*`, is accepted.
 
 For example, `['repo:owner/repo1:ref:refs/heads/branch1', 'repo:owner/repo1:environment:prod']`
 
