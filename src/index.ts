@@ -10,3 +10,4 @@ export * from './json-patch';
 export * from './steps/github-action-step';
 export * from './aws-credentials';
 export * from './github-common';
+export * from './github-action-role-stage';
