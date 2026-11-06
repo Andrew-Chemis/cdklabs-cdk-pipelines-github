@@ -2024,6 +2024,7 @@ const gitHubWorkflowProps: GitHubWorkflowProps = { ... }
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.buildContainer">buildContainer</a></code> | <code><a href="#cdk-pipelines-github.ContainerOptions">ContainerOptions</a></code> | Build container options. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.cdkAssetsVersion">cdkAssetsVersion</a></code> | <code>string</code> | Version of the [cdk-assets package](https://www.npmjs.com/package/cdk-assets) to use. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.concurrency">concurrency</a></code> | <code><a href="#cdk-pipelines-github.ConcurrencyOptions">ConcurrencyOptions</a></code> | GitHub workflow concurrency. |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.deployJobNamer">deployJobNamer</a></code> | <code><a href="#cdk-pipelines-github.IDeployJobNamer">IDeployJobNamer</a></code> | Chooses the display name of the job that deploys each stack, in every wave. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.dockerAssetJobSettings">dockerAssetJobSettings</a></code> | <code><a href="#cdk-pipelines-github.DockerAssetJobSettings">DockerAssetJobSettings</a></code> | Job level settings applied to all docker asset publishing jobs in the workflow. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.dockerCredentials">dockerCredentials</a></code> | <code><a href="#cdk-pipelines-github.DockerCredential">DockerCredential</a>[]</code> | The Docker Credentials to use to login. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.gitHubActionRoleArn">gitHubActionRoleArn</a></code> | <code>string</code> | A role that utilizes the GitHub OIDC Identity Provider in your AWS account. |
@@ -2121,6 +2122,21 @@ public readonly concurrency: ConcurrencyOptions;
 - *Default:* no concurrency settings
 
 GitHub workflow concurrency.
+
+---
+
+##### `deployJobNamer`<sup>Optional</sup> <a name="deployJobNamer" id="cdk-pipelines-github.GitHubWorkflowProps.property.deployJobNamer"></a>
+
+```typescript
+public readonly deployJobNamer: IDeployJobNamer;
+```
+
+- *Type:* <a href="#cdk-pipelines-github.IDeployJobNamer">IDeployJobNamer</a>
+- *Default:* `Deploy <stack artifact id>`
+
+Chooses the display name of the job that deploys each stack, in every wave.
+
+The job id is not affected.
 
 ---
 
@@ -5683,6 +5699,46 @@ name: deploy
 
 ---
 
+
+## Protocols <a name="Protocols" id="Protocols"></a>
+
+### IDeployJobNamer <a name="IDeployJobNamer" id="cdk-pipelines-github.IDeployJobNamer"></a>
+
+- *Implemented By:* <a href="#cdk-pipelines-github.IDeployJobNamer">IDeployJobNamer</a>
+
+Chooses the name GitHub shows for the job that deploys a stack.
+
+#### Methods <a name="Methods" id="Methods"></a>
+
+| **Name** | **Description** |
+| --- | --- |
+| <code><a href="#cdk-pipelines-github.IDeployJobNamer.deployJobName">deployJobName</a></code> | The `name` of the job that deploys `stack`. |
+
+---
+
+##### `deployJobName` <a name="deployJobName" id="cdk-pipelines-github.IDeployJobNamer.deployJobName"></a>
+
+```typescript
+public deployJobName(stage: StageDeployment, stack: StackDeployment): string
+```
+
+The `name` of the job that deploys `stack`.
+
+###### `stage`<sup>Required</sup> <a name="stage" id="cdk-pipelines-github.IDeployJobNamer.deployJobName.parameter.stage"></a>
+
+- *Type:* aws-cdk-lib.pipelines.StageDeployment
+
+the stage the stack is deployed in.
+
+---
+
+###### `stack`<sup>Required</sup> <a name="stack" id="cdk-pipelines-github.IDeployJobNamer.deployJobName.parameter.stack"></a>
+
+- *Type:* aws-cdk-lib.pipelines.StackDeployment
+
+the stack that the job deploys.
+
+---
 
 
 ## Enums <a name="Enums" id="Enums"></a>
