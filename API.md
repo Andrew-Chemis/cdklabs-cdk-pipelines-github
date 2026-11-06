@@ -2033,6 +2033,8 @@ const gitHubWorkflowProps: GitHubWorkflowProps = { ... }
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.preSynthed">preSynthed</a></code> | <code>boolean</code> | Indicates if the repository already contains a synthesized `cdk.out` directory, in which case we will simply checkout the repo in jobs that require `cdk.out`. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.publishAssetsAuthRegion">publishAssetsAuthRegion</a></code> | <code>string</code> | Will assume the GitHubActionRole in this region when publishing assets. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.runner">runner</a></code> | <code><a href="#cdk-pipelines-github.Runner">Runner</a></code> | The type of runner to run the job on. |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.synthJobPermissions">synthJobPermissions</a></code> | <code><a href="#cdk-pipelines-github.JobPermissions">JobPermissions</a></code> | Permissions added to the synthesize job, merged over the ones the library sets (`contents: read` and `id-token`). |
+| <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.synthStepEnv">synthStepEnv</a></code> | <code>{[ key: string ]: string}</code> | Environment variables set on the `Install` and `Build` steps of the synthesize job, and on no other step. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowName">workflowName</a></code> | <code>string</code> | Name of the workflow. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowPath">workflowPath</a></code> | <code>string</code> | File path for the GitHub workflow. |
 | <code><a href="#cdk-pipelines-github.GitHubWorkflowProps.property.workflowTriggers">workflowTriggers</a></code> | <code><a href="#cdk-pipelines-github.WorkflowTriggers">WorkflowTriggers</a></code> | GitHub workflow triggers. |
@@ -2262,6 +2264,52 @@ The runner can be either a
 GitHub-hosted runner or a self-hosted runner.
 
 ---
+
+##### `synthJobPermissions`<sup>Optional</sup> <a name="synthJobPermissions" id="cdk-pipelines-github.GitHubWorkflowProps.property.synthJobPermissions"></a>
+
+```typescript
+public readonly synthJobPermissions: JobPermissions;
+```
+
+- *Type:* <a href="#cdk-pipelines-github.JobPermissions">JobPermissions</a>
+- *Default:* no additional permissions
+
+Permissions added to the synthesize job, merged over the ones the library sets (`contents: read` and `id-token`).
+
+---
+
+*Example*
+
+```typescript
+const synthJobPermissions = { packages: JobPermission.READ };
+```
+
+
+##### `synthStepEnv`<sup>Optional</sup> <a name="synthStepEnv" id="cdk-pipelines-github.GitHubWorkflowProps.property.synthStepEnv"></a>
+
+```typescript
+public readonly synthStepEnv: {[ key: string ]: string};
+```
+
+- *Type:* {[ key: string ]: string}
+- *Default:* no additional environment variables
+
+Environment variables set on the `Install` and `Build` steps of the synthesize job, and on no other step.
+
+Use this for values that only the steps that install and build need, such as
+a token for a private package registry. Unlike the `env` of the synth
+`ShellStep`, which applies to every step in the job (including actions in
+`preBuildSteps` and `postBuildSteps`), these variables are not visible to the
+other steps.
+
+---
+
+*Example*
+
+```typescript
+const synthStepEnv = { NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' };
+```
+
 
 ##### `workflowName`<sup>Optional</sup> <a name="workflowName" id="cdk-pipelines-github.GitHubWorkflowProps.property.workflowName"></a>
 
