@@ -1787,10 +1787,11 @@ const gitHubSecretsProviderProps: GitHubSecretsProviderProps = { ... }
 | <code><a href="#cdk-pipelines-github.GitHubSecretsProviderProps.property.accessKeyId">accessKeyId</a></code> | <code>string</code> | *No description.* |
 | <code><a href="#cdk-pipelines-github.GitHubSecretsProviderProps.property.secretAccessKey">secretAccessKey</a></code> | <code>string</code> | *No description.* |
 | <code><a href="#cdk-pipelines-github.GitHubSecretsProviderProps.property.sessionToken">sessionToken</a></code> | <code>string</code> | *No description.* |
+| <code><a href="#cdk-pipelines-github.GitHubSecretsProviderProps.property.useRoleExternalId">useRoleExternalId</a></code> | <code>boolean</code> | Whether to pass `role-external-id: Pipeline` to `configure-aws-credentials` when a CDK bootstrap role is assumed. |
 
 ---
 
-##### `accessKeyId`<sup>Required</sup> <a name="accessKeyId" id="cdk-pipelines-github.GitHubSecretsProviderProps.property.accessKeyId"></a>
+##### `accessKeyId`<sup>Optional</sup> <a name="accessKeyId" id="cdk-pipelines-github.GitHubSecretsProviderProps.property.accessKeyId"></a>
 
 ```typescript
 public readonly accessKeyId: string;
@@ -1801,7 +1802,7 @@ public readonly accessKeyId: string;
 
 ---
 
-##### `secretAccessKey`<sup>Required</sup> <a name="secretAccessKey" id="cdk-pipelines-github.GitHubSecretsProviderProps.property.secretAccessKey"></a>
+##### `secretAccessKey`<sup>Optional</sup> <a name="secretAccessKey" id="cdk-pipelines-github.GitHubSecretsProviderProps.property.secretAccessKey"></a>
 
 ```typescript
 public readonly secretAccessKey: string;
@@ -1820,6 +1821,23 @@ public readonly sessionToken: string;
 
 - *Type:* string
 - *Default:* no session token is used
+
+---
+
+##### `useRoleExternalId`<sup>Optional</sup> <a name="useRoleExternalId" id="cdk-pipelines-github.GitHubSecretsProviderProps.property.useRoleExternalId"></a>
+
+```typescript
+public readonly useRoleExternalId: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Whether to pass `role-external-id: Pipeline` to `configure-aws-credentials` when a CDK bootstrap role is assumed.
+
+Set this to `false` for bootstrap stacks whose roles do not accept an
+external ID (bootstrap template version 29), where assuming the role is
+denied when one is present.
 
 ---
 
@@ -3332,6 +3350,7 @@ const openIdConnectProviderProps: OpenIdConnectProviderProps = { ... }
 | --- | --- | --- |
 | <code><a href="#cdk-pipelines-github.OpenIdConnectProviderProps.property.gitHubActionRoleArn">gitHubActionRoleArn</a></code> | <code>string</code> | A role that utilizes the GitHub OIDC Identity Provider in your AWS account. |
 | <code><a href="#cdk-pipelines-github.OpenIdConnectProviderProps.property.roleSessionName">roleSessionName</a></code> | <code>string</code> | The role session name to use when assuming the role. |
+| <code><a href="#cdk-pipelines-github.OpenIdConnectProviderProps.property.useRoleExternalId">useRoleExternalId</a></code> | <code>boolean</code> | Whether to pass `role-external-id: Pipeline` to `configure-aws-credentials` when a CDK bootstrap role is assumed. |
 
 ---
 
@@ -3361,6 +3380,23 @@ public readonly roleSessionName: string;
 - *Default:* no role session name
 
 The role session name to use when assuming the role.
+
+---
+
+##### `useRoleExternalId`<sup>Optional</sup> <a name="useRoleExternalId" id="cdk-pipelines-github.OpenIdConnectProviderProps.property.useRoleExternalId"></a>
+
+```typescript
+public readonly useRoleExternalId: boolean;
+```
+
+- *Type:* boolean
+- *Default:* true
+
+Whether to pass `role-external-id: Pipeline` to `configure-aws-credentials` when a CDK bootstrap role is assumed.
+
+Set this to `false` for bootstrap stacks whose roles do not accept an
+external ID (bootstrap template version 29), where assuming the role is
+denied when one is present.
 
 ---
 
