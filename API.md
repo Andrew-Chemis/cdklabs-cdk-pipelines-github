@@ -2183,8 +2183,8 @@ public readonly jobSettings: JobSettings;
 
 Job level settings that will be applied to all jobs in the workflow, including synth and asset deploy jobs.
 
-Currently the only valid setting
-is 'if'. You can use this to run jobs only in specific repositories.
+The valid settings are 'if' and
+'timeoutMinutes'. You can use 'if' to run jobs only in specific repositories.
 
 > [https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-only-run-job-for-specific-repository](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-only-run-job-for-specific-repository)
 
@@ -2951,6 +2951,7 @@ const jobSettings: JobSettings = { ... }
 | **Name** | **Type** | **Description** |
 | --- | --- | --- |
 | <code><a href="#cdk-pipelines-github.JobSettings.property.if">if</a></code> | <code>string</code> | jobs.<job_id>.if. |
+| <code><a href="#cdk-pipelines-github.JobSettings.property.timeoutMinutes">timeoutMinutes</a></code> | <code>number</code> | jobs.<job_id>.timeout-minutes. |
 
 ---
 
@@ -2965,6 +2966,24 @@ public readonly if: string;
 jobs.<job_id>.if.
 
 > [https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idif](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idif)
+
+---
+
+##### `timeoutMinutes`<sup>Optional</sup> <a name="timeoutMinutes" id="cdk-pipelines-github.JobSettings.property.timeoutMinutes"></a>
+
+```typescript
+public readonly timeoutMinutes: number;
+```
+
+- *Type:* number
+- *Default:* GitHub's default (360 minutes)
+
+jobs.<job_id>.timeout-minutes.
+
+The maximum number of minutes to let a job run before GitHub automatically
+cancels it. Must be a whole number of at least 1.
+
+> [https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes)
 
 ---
 
