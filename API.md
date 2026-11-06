@@ -164,6 +164,342 @@ property in your GitHub Workflow app.
 ---
 
 
+### GitHubActionRoleStage <a name="GitHubActionRoleStage" id="cdk-pipelines-github.GitHubActionRoleStage"></a>
+
+A stage with one stack that holds a GitHub Actions OIDC role, so that the role can be deployed by hand once and then updated by the workflow itself.
+
+The stack's `stackName` and `env` are pinned, and the deploy acknowledges
+`CAPABILITY_NAMED_IAM`, which CloudFormation requires for a role that has a
+fixed `roleName`. A stage would otherwise name the stack
+`<stage name>-<stack id>`, and the workflow would deploy a second stack next
+to the one that was created by hand.
+
+Deploying the role that the workflow assumes is circular. A change that
+breaks the role's trust policy also breaks the workflow's ability to fix it,
+and the way out is to deploy the role by hand again. Put the stage in the
+first wave, so that a later wave that needs new permissions gets them in the
+same run.
+
+Override `createRole` to build the role with another construct.
+
+#### Initializers <a name="Initializers" id="cdk-pipelines-github.GitHubActionRoleStage.Initializer"></a>
+
+```typescript
+import { GitHubActionRoleStage } from 'cdk-pipelines-github'
+
+new GitHubActionRoleStage(scope: Construct, id: string, props: GitHubActionRoleStageProps)
+```
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.Initializer.parameter.scope">scope</a></code> | <code>constructs.Construct</code> | *No description.* |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.Initializer.parameter.id">id</a></code> | <code>string</code> | *No description.* |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.Initializer.parameter.props">props</a></code> | <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps">GitHubActionRoleStageProps</a></code> | *No description.* |
+
+---
+
+##### `scope`<sup>Required</sup> <a name="scope" id="cdk-pipelines-github.GitHubActionRoleStage.Initializer.parameter.scope"></a>
+
+- *Type:* constructs.Construct
+
+---
+
+##### `id`<sup>Required</sup> <a name="id" id="cdk-pipelines-github.GitHubActionRoleStage.Initializer.parameter.id"></a>
+
+- *Type:* string
+
+---
+
+##### `props`<sup>Required</sup> <a name="props" id="cdk-pipelines-github.GitHubActionRoleStage.Initializer.parameter.props"></a>
+
+- *Type:* <a href="#cdk-pipelines-github.GitHubActionRoleStageProps">GitHubActionRoleStageProps</a>
+
+---
+
+#### Methods <a name="Methods" id="Methods"></a>
+
+| **Name** | **Description** |
+| --- | --- |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.toString">toString</a></code> | Returns a string representation of this construct. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.synth">synth</a></code> | Synthesize this stage into a cloud assembly. |
+
+---
+
+##### `toString` <a name="toString" id="cdk-pipelines-github.GitHubActionRoleStage.toString"></a>
+
+```typescript
+public toString(): string
+```
+
+Returns a string representation of this construct.
+
+##### `synth` <a name="synth" id="cdk-pipelines-github.GitHubActionRoleStage.synth"></a>
+
+```typescript
+public synth(options?: StageSynthesisOptions): CloudAssembly
+```
+
+Synthesize this stage into a cloud assembly.
+
+Once an assembly has been synthesized, it cannot be modified. Subsequent
+calls will return the same assembly.
+
+###### `options`<sup>Optional</sup> <a name="options" id="cdk-pipelines-github.GitHubActionRoleStage.synth.parameter.options"></a>
+
+- *Type:* aws-cdk-lib.StageSynthesisOptions
+
+---
+
+#### Static Functions <a name="Static Functions" id="Static Functions"></a>
+
+| **Name** | **Description** |
+| --- | --- |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.isConstruct">isConstruct</a></code> | Checks if `x` is a construct. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.isStage">isStage</a></code> | Test whether the given construct is a stage. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.of">of</a></code> | Return the stage this construct is contained with, if available. |
+
+---
+
+##### `isConstruct` <a name="isConstruct" id="cdk-pipelines-github.GitHubActionRoleStage.isConstruct"></a>
+
+```typescript
+import { GitHubActionRoleStage } from 'cdk-pipelines-github'
+
+GitHubActionRoleStage.isConstruct(x: any)
+```
+
+Checks if `x` is a construct.
+
+Use this method instead of `instanceof` to properly detect `Construct`
+instances, even when the construct library is symlinked.
+
+Explanation: in JavaScript, multiple copies of the `constructs` library on
+disk are seen as independent, completely different libraries. As a
+consequence, the class `Construct` in each copy of the `constructs` library
+is seen as a different class, and an instance of one class will not test as
+`instanceof` the other class. `npm install` will not create installations
+like this, but users may manually symlink construct libraries together or
+use a monorepo tool: in those cases, multiple copies of the `constructs`
+library can be accidentally installed, and `instanceof` will behave
+unpredictably. It is safest to avoid using `instanceof`, and using
+this type-testing method instead.
+
+###### `x`<sup>Required</sup> <a name="x" id="cdk-pipelines-github.GitHubActionRoleStage.isConstruct.parameter.x"></a>
+
+- *Type:* any
+
+Any object.
+
+---
+
+##### `isStage` <a name="isStage" id="cdk-pipelines-github.GitHubActionRoleStage.isStage"></a>
+
+```typescript
+import { GitHubActionRoleStage } from 'cdk-pipelines-github'
+
+GitHubActionRoleStage.isStage(x: any)
+```
+
+Test whether the given construct is a stage.
+
+###### `x`<sup>Required</sup> <a name="x" id="cdk-pipelines-github.GitHubActionRoleStage.isStage.parameter.x"></a>
+
+- *Type:* any
+
+---
+
+##### `of` <a name="of" id="cdk-pipelines-github.GitHubActionRoleStage.of"></a>
+
+```typescript
+import { GitHubActionRoleStage } from 'cdk-pipelines-github'
+
+GitHubActionRoleStage.of(construct: IConstruct)
+```
+
+Return the stage this construct is contained with, if available.
+
+If called
+on a nested stage, returns its parent.
+
+###### `construct`<sup>Required</sup> <a name="construct" id="cdk-pipelines-github.GitHubActionRoleStage.of.parameter.construct"></a>
+
+- *Type:* constructs.IConstruct
+
+---
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.node">node</a></code> | <code>constructs.Node</code> | The tree node. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.artifactId">artifactId</a></code> | <code>string</code> | Artifact ID of the assembly if it is a nested stage. The root stage (app) will return an empty string. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.assetOutdir">assetOutdir</a></code> | <code>string</code> | The cloud assembly asset output directory. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.outdir">outdir</a></code> | <code>string</code> | The cloud assembly output directory. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.policyValidationBeta1">policyValidationBeta1</a></code> | <code>aws-cdk-lib.IPolicyValidationPluginBeta1[]</code> | Validation plugins to run during synthesis. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.stageName">stageName</a></code> | <code>string</code> | The name of the stage. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.account">account</a></code> | <code>string</code> | The default account for all resources defined within this stage. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.parentStage">parentStage</a></code> | <code>aws-cdk-lib.Stage</code> | The parent stage or `undefined` if this is the app. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.region">region</a></code> | <code>string</code> | The default region for all resources defined within this stage. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.props">props</a></code> | <code><a href="#cdk-pipelines-github.GitHubStageProps">GitHubStageProps</a></code> | *No description.* |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.role">role</a></code> | <code>aws-cdk-lib.aws_iam.IRole</code> | The role that GitHub Actions assumes. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStage.property.roleStack">roleStack</a></code> | <code>aws-cdk-lib.Stack</code> | The stack that holds the role. |
+
+---
+
+##### `node`<sup>Required</sup> <a name="node" id="cdk-pipelines-github.GitHubActionRoleStage.property.node"></a>
+
+```typescript
+public readonly node: Node;
+```
+
+- *Type:* constructs.Node
+
+The tree node.
+
+---
+
+##### `artifactId`<sup>Required</sup> <a name="artifactId" id="cdk-pipelines-github.GitHubActionRoleStage.property.artifactId"></a>
+
+```typescript
+public readonly artifactId: string;
+```
+
+- *Type:* string
+
+Artifact ID of the assembly if it is a nested stage. The root stage (app) will return an empty string.
+
+Derived from the construct path.
+
+---
+
+##### `assetOutdir`<sup>Required</sup> <a name="assetOutdir" id="cdk-pipelines-github.GitHubActionRoleStage.property.assetOutdir"></a>
+
+```typescript
+public readonly assetOutdir: string;
+```
+
+- *Type:* string
+
+The cloud assembly asset output directory.
+
+---
+
+##### `outdir`<sup>Required</sup> <a name="outdir" id="cdk-pipelines-github.GitHubActionRoleStage.property.outdir"></a>
+
+```typescript
+public readonly outdir: string;
+```
+
+- *Type:* string
+
+The cloud assembly output directory.
+
+---
+
+##### `policyValidationBeta1`<sup>Required</sup> <a name="policyValidationBeta1" id="cdk-pipelines-github.GitHubActionRoleStage.property.policyValidationBeta1"></a>
+
+```typescript
+public readonly policyValidationBeta1: IPolicyValidationPluginBeta1[];
+```
+
+- *Type:* aws-cdk-lib.IPolicyValidationPluginBeta1[]
+- *Default:* no validation plugins are used
+
+Validation plugins to run during synthesis.
+
+If any plugin reports any violation,
+synthesis will be interrupted and the report displayed to the user.
+
+---
+
+##### `stageName`<sup>Required</sup> <a name="stageName" id="cdk-pipelines-github.GitHubActionRoleStage.property.stageName"></a>
+
+```typescript
+public readonly stageName: string;
+```
+
+- *Type:* string
+
+The name of the stage.
+
+Based on names of the parent stages separated by
+hypens.
+
+---
+
+##### `account`<sup>Optional</sup> <a name="account" id="cdk-pipelines-github.GitHubActionRoleStage.property.account"></a>
+
+```typescript
+public readonly account: string;
+```
+
+- *Type:* string
+
+The default account for all resources defined within this stage.
+
+---
+
+##### `parentStage`<sup>Optional</sup> <a name="parentStage" id="cdk-pipelines-github.GitHubActionRoleStage.property.parentStage"></a>
+
+```typescript
+public readonly parentStage: Stage;
+```
+
+- *Type:* aws-cdk-lib.Stage
+
+The parent stage or `undefined` if this is the app.
+
+*
+
+---
+
+##### `region`<sup>Optional</sup> <a name="region" id="cdk-pipelines-github.GitHubActionRoleStage.property.region"></a>
+
+```typescript
+public readonly region: string;
+```
+
+- *Type:* string
+
+The default region for all resources defined within this stage.
+
+---
+
+##### `props`<sup>Optional</sup> <a name="props" id="cdk-pipelines-github.GitHubActionRoleStage.property.props"></a>
+
+```typescript
+public readonly props: GitHubStageProps;
+```
+
+- *Type:* <a href="#cdk-pipelines-github.GitHubStageProps">GitHubStageProps</a>
+
+---
+
+##### `role`<sup>Required</sup> <a name="role" id="cdk-pipelines-github.GitHubActionRoleStage.property.role"></a>
+
+```typescript
+public readonly role: IRole;
+```
+
+- *Type:* aws-cdk-lib.aws_iam.IRole
+
+The role that GitHub Actions assumes.
+
+---
+
+##### `roleStack`<sup>Required</sup> <a name="roleStack" id="cdk-pipelines-github.GitHubActionRoleStage.property.roleStack"></a>
+
+```typescript
+public readonly roleStack: Stack;
+```
+
+- *Type:* aws-cdk-lib.Stack
+
+The stack that holds the role.
+
+---
+
+
 ### GitHubStage <a name="GitHubStage" id="cdk-pipelines-github.GitHubStage"></a>
 
 #### Initializers <a name="Initializers" id="cdk-pipelines-github.GitHubStage.Initializer"></a>
@@ -1563,6 +1899,236 @@ Every time GitHub rotates their certificates, this value will need to be updated
 
 Default value is up-to-date to June 27, 2023 as per
 https://github.blog/changelog/2023-06-27-github-actions-update-on-oidc-integration-with-aws/
+
+---
+
+### GitHubActionRoleStageProps <a name="GitHubActionRoleStageProps" id="cdk-pipelines-github.GitHubActionRoleStageProps"></a>
+
+Properties for the GitHubActionRoleStage construct.
+
+#### Initializer <a name="Initializer" id="cdk-pipelines-github.GitHubActionRoleStageProps.Initializer"></a>
+
+```typescript
+import { GitHubActionRoleStageProps } from 'cdk-pipelines-github'
+
+const gitHubActionRoleStageProps: GitHubActionRoleStageProps = { ... }
+```
+
+#### Properties <a name="Properties" id="Properties"></a>
+
+| **Name** | **Type** | **Description** |
+| --- | --- | --- |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.gitHubEnvironment">gitHubEnvironment</a></code> | <code><a href="#cdk-pipelines-github.GitHubEnvironment">GitHubEnvironment</a></code> | Run the stage in a specific GitHub Environment. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.jobSettings">jobSettings</a></code> | <code><a href="#cdk-pipelines-github.JobSettings">JobSettings</a></code> | Job level settings that will be applied to all jobs in the stage. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.stackCapabilities">stackCapabilities</a></code> | <code><a href="#cdk-pipelines-github.StackCapabilities">StackCapabilities</a>[]</code> | In some cases, you must explicitly acknowledge that your CloudFormation stack template contains certain capabilities in order for CloudFormation to create the stack. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.provider">provider</a></code> | <code>aws-cdk-lib.aws_iam.IOpenIdConnectProvider</code> | The GitHub OpenId Connect Provider. Must have provider url `https://token.actions.githubusercontent.com`. The audience must be `sts:amazonaws.com`. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.repos">repos</a></code> | <code>string[]</code> | A list of GitHub repositories you want to be able to access the IAM role. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.roleName">roleName</a></code> | <code>string</code> | The name of the Oidc role. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.subjectClaims">subjectClaims</a></code> | <code>string[]</code> | A list of subject claims allowed to access the IAM role. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.thumbprints">thumbprints</a></code> | <code>string[]</code> | Thumbprints of GitHub's certificates. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.env">env</a></code> | <code>aws-cdk-lib.Environment</code> | The account and region of the role stack. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.stackName">stackName</a></code> | <code>string</code> | The name of the CloudFormation stack that holds the role. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.existingProvider">existingProvider</a></code> | <code>boolean</code> | Reference the account's existing GitHub OIDC provider instead of creating a new one. |
+| <code><a href="#cdk-pipelines-github.GitHubActionRoleStageProps.property.stackId">stackId</a></code> | <code>string</code> | The construct id of the role stack, which is part of the stack's artifact id and so of the ids of the jobs that deploy it. |
+
+---
+
+##### `gitHubEnvironment`<sup>Optional</sup> <a name="gitHubEnvironment" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.gitHubEnvironment"></a>
+
+```typescript
+public readonly gitHubEnvironment: GitHubEnvironment;
+```
+
+- *Type:* <a href="#cdk-pipelines-github.GitHubEnvironment">GitHubEnvironment</a>
+- *Default:* no GitHub environment
+
+Run the stage in a specific GitHub Environment.
+
+If specified,
+any protection rules configured for the environment must pass
+before the job is set to a runner. For example, if the environment
+has a manual approval rule configured, then the workflow will
+wait for the approval before sending the job to the runner.
+
+Running a workflow that references an environment that does not
+exist will create an environment with the referenced name.
+
+> [https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment)
+
+---
+
+##### `jobSettings`<sup>Optional</sup> <a name="jobSettings" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.jobSettings"></a>
+
+```typescript
+public readonly jobSettings: JobSettings;
+```
+
+- *Type:* <a href="#cdk-pipelines-github.JobSettings">JobSettings</a>
+
+Job level settings that will be applied to all jobs in the stage.
+
+Currently the only valid setting is 'if'.
+
+---
+
+##### `stackCapabilities`<sup>Optional</sup> <a name="stackCapabilities" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.stackCapabilities"></a>
+
+```typescript
+public readonly stackCapabilities: StackCapabilities[];
+```
+
+- *Type:* <a href="#cdk-pipelines-github.StackCapabilities">StackCapabilities</a>[]
+- *Default:* ['CAPABILITY_IAM']
+
+In some cases, you must explicitly acknowledge that your CloudFormation stack template contains certain capabilities in order for CloudFormation to create the stack.
+
+If insufficiently specified, CloudFormation returns an `InsufficientCapabilities`
+error.
+
+---
+
+##### `provider`<sup>Optional</sup> <a name="provider" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.provider"></a>
+
+```typescript
+public readonly provider: IOpenIdConnectProvider;
+```
+
+- *Type:* aws-cdk-lib.aws_iam.IOpenIdConnectProvider
+- *Default:* a provider is created for you.
+
+The GitHub OpenId Connect Provider. Must have provider url `https://token.actions.githubusercontent.com`. The audience must be `sts:amazonaws.com`.
+
+Only one such provider can be defined per account, so if you already
+have a provider with the same url, a new provider cannot be created for you.
+
+---
+
+##### `repos`<sup>Optional</sup> <a name="repos" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.repos"></a>
+
+```typescript
+public readonly repos: string[];
+```
+
+- *Type:* string[]
+
+A list of GitHub repositories you want to be able to access the IAM role.
+
+Each entry should be your GitHub username and repository passed in as a
+single string.
+An entry `owner/repo` is equivalent to the subjectClaim `repo:owner/repo:*`.
+
+For example, `['owner/repo1', 'owner/repo2'].
+
+---
+
+##### `roleName`<sup>Optional</sup> <a name="roleName" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.roleName"></a>
+
+```typescript
+public readonly roleName: string;
+```
+
+- *Type:* string
+- *Default:* 'GitHubActionRole'
+
+The name of the Oidc role.
+
+---
+
+##### `subjectClaims`<sup>Optional</sup> <a name="subjectClaims" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.subjectClaims"></a>
+
+```typescript
+public readonly subjectClaims: string[];
+```
+
+- *Type:* string[]
+
+A list of subject claims allowed to access the IAM role.
+
+See https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect
+A subject claim can include `*` and `?` wildcards according to the `StringLike`
+condition operator.
+
+For example, `['repo:owner/repo1:ref:refs/heads/branch1', 'repo:owner/repo1:environment:prod']`
+
+---
+
+##### `thumbprints`<sup>Optional</sup> <a name="thumbprints" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.thumbprints"></a>
+
+```typescript
+public readonly thumbprints: string[];
+```
+
+- *Type:* string[]
+- *Default:* Use built-in keys
+
+Thumbprints of GitHub's certificates.
+
+Every time GitHub rotates their certificates, this value will need to be updated.
+
+Default value is up-to-date to June 27, 2023 as per
+https://github.blog/changelog/2023-06-27-github-actions-update-on-oidc-integration-with-aws/
+
+---
+
+##### `env`<sup>Required</sup> <a name="env" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.env"></a>
+
+```typescript
+public readonly env: Environment;
+```
+
+- *Type:* aws-cdk-lib.Environment
+
+The account and region of the role stack.
+
+A stack is identified by account, region and name. If the environment
+differs from where the stack was deployed by hand, the workflow creates a
+second stack instead of updating the first.
+
+---
+
+##### `stackName`<sup>Required</sup> <a name="stackName" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.stackName"></a>
+
+```typescript
+public readonly stackName: string;
+```
+
+- *Type:* string
+
+The name of the CloudFormation stack that holds the role.
+
+The stack always has this name, so a stack that was deployed by hand and
+the stack the workflow updates are the same stack.
+
+---
+
+##### `existingProvider`<sup>Optional</sup> <a name="existingProvider" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.existingProvider"></a>
+
+```typescript
+public readonly existingProvider: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Reference the account's existing GitHub OIDC provider instead of creating a new one.
+
+An account can hold only one provider with the url
+`https://token.actions.githubusercontent.com`.
+
+Cannot be combined with `provider`.
+
+---
+
+##### `stackId`<sup>Optional</sup> <a name="stackId" id="cdk-pipelines-github.GitHubActionRoleStageProps.property.stackId"></a>
+
+```typescript
+public readonly stackId: string;
+```
+
+- *Type:* string
+- *Default:* 'RoleStack'
+
+The construct id of the role stack, which is part of the stack's artifact id and so of the ids of the jobs that deploy it.
 
 ---
 
