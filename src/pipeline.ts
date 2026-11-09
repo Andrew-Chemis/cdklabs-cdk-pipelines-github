@@ -62,6 +62,19 @@ export interface JobSettings {
 }
 
 /**
+ * Chooses the name GitHub shows for the job that deploys a stack.
+ */
+export interface IDeployJobNamer {
+  /**
+   * The `name` of the job that deploys `stack`.
+   *
+   * @param stage the stage the stack is deployed in
+   * @param stack the stack that the job deploys
+   */
+  deployJobName(stage: StageDeployment, stack: StackDeployment): string;
+}
+
+/**
  * Props for `GitHubWorkflow`.
  */
 export interface GitHubWorkflowProps extends PipelineBaseProps {
@@ -226,6 +239,14 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
    * @default - no additional settings
    */
   readonly dockerAssetJobSettings?: DockerAssetJobSettings;
+
+  /**
+   * Chooses the display name of the job that deploys each stack, in every wave.
+   * The job id is not affected.
+   *
+   * @default - `Deploy <stack artifact id>`
+   */
+  readonly deployJobNamer?: IDeployJobNamer;
 }
 
 /**
@@ -260,6 +281,8 @@ export class GitHubWorkflow extends PipelineBase {
     }
   > = {};
   private readonly jobSettings?: JobSettings;
+  private readonly deployJobNamer?: IDeployJobNamer;
+  private readonly stageOfStack: Record<string, StageDeployment> = {};
   private dockerAssetJobSettings?: DockerAssetJobSettings;
   // in order to keep track of if this pipeline has been built so we can
   // catch later calls to addWave() or addStage()
@@ -277,6 +300,7 @@ export class GitHubWorkflow extends PipelineBase {
     this.postBuildSteps = props.postBuildSteps ?? [];
     validateJobSettings(props.jobSettings);
     this.jobSettings = props.jobSettings;
+    this.deployJobNamer = props.deployJobNamer;
     this.dockerAssetJobSettings = props.dockerAssetJobSettings;
 
     this.awsCredentials = this.getAwsCredentials(props);
@@ -444,6 +468,14 @@ export class GitHubWorkflow extends PipelineBase {
     const cdkoutDir = app.outdir;
 
     const jobs = new Array<Job>();
+
+    for (const wave of this.waves) {
+      for (const stage of wave.stages) {
+        for (const stack of stage.stacks) {
+          this.stageOfStack[stack.stackArtifactId] = stage;
+        }
+      }
+    }
 
     const structure = new PipelineGraph(this, {
       selfMutation: false,
@@ -710,7 +742,7 @@ export class GitHubWorkflow extends PipelineBase {
     return {
       id: node.uniqueId,
       definition: {
-        name: `Deploy ${stack.stackArtifactId}`,
+        name: this.deployJobNameOf(stack),
         ...this.renderJobSettingParameters(),
         ...this.stackProperties[stack.stackArtifactId]?.settings,
         permissions: {
@@ -730,6 +762,17 @@ export class GitHubWorkflow extends PipelineBase {
         ],
       },
     };
+  }
+
+  private deployJobNameOf(stack: StackDeployment): string {
+    if (!this.deployJobNamer) {
+      return `Deploy ${stack.stackArtifactId}`;
+    }
+    const name = this.deployJobNamer.deployJobName(this.stageOfStack[stack.stackArtifactId], stack);
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error(`deployJobNamer returned an empty name for stack '${stack.stackArtifactId}'`);
+    }
+    return name;
   }
 
   private jobForBuildStep(node: AGraphNode, step: Step): Job {
