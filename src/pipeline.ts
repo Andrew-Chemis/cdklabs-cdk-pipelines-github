@@ -110,6 +110,23 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
   readonly cdkAssetsInstallIgnoreScripts?: boolean;
 
   /**
+   * Replace the ref of the GitHub Actions the workflow uses, for example to pin
+   * them to commit SHAs.
+   *
+   * Keys are the action as written before the `@` in a `uses:` (`owner/repo`,
+   * or `owner/repo/path` for an action in a subdirectory) and values are the ref
+   * to use after it, such as a commit SHA or a tag. The ref is applied to every
+   * step-level and job-level `uses` in the rendered workflow, including steps
+   * you supply yourself (`preBuildSteps`, `postBuildSteps`, `GitHubActionStep`).
+   * Local (`./`) and `docker://` references are never changed, and an entry that
+   * matches nothing is ignored.
+   *
+   * @example const actionRefs = { 'actions/checkout': '0123456789abcdef0123456789abcdef01234567' };
+   * @default - actions are used with the refs this library and your steps specify
+   */
+  readonly actionRefs?: { [ownerRepo: string]: string };
+
+  /**
    * Indicates if the repository already contains a synthesized `cdk.out` directory, in which
    * case we will simply checkout the repo in jobs that require `cdk.out`.
    *
@@ -226,6 +243,7 @@ export class GitHubWorkflow extends PipelineBase {
   private readonly dockerCredentials: DockerCredential[];
   private readonly cdkAssetsVersion?: string;
   private readonly cdkAssetsInstallIgnoreScripts: boolean;
+  private readonly actionRefs?: { [ownerRepo: string]: string };
   private readonly buildContainer?: github.ContainerOptions;
   private readonly preBuildSteps: github.JobStep[];
   private readonly postBuildSteps: github.JobStep[];
@@ -252,6 +270,7 @@ export class GitHubWorkflow extends PipelineBase {
 
     this.cdkAssetsVersion = props.cdkAssetsVersion;
     this.cdkAssetsInstallIgnoreScripts = props.cdkAssetsInstallIgnoreScripts ?? false;
+    this.actionRefs = props.actionRefs ? validateActionRefs(props.actionRefs) : undefined;
     this.preSynthed = props.preSynthed ?? false;
     this.buildContainer = props.buildContainer;
     this.preBuildSteps = props.preBuildSteps ?? [];
@@ -464,6 +483,10 @@ export class GitHubWorkflow extends PipelineBase {
 
     // Update jobs with late-bound output requests
     this.insertJobOutputs(jobmap);
+
+    if (this.actionRefs) {
+      applyActionRefs(jobmap, this.actionRefs);
+    }
 
     const workflow = {
       name: this.workflowName,
@@ -983,6 +1006,45 @@ function validateJobSettings(settings?: JobSettings) {
   const minutes = settings?.timeoutMinutes;
   if (minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1)) {
     throw new Error(`jobSettings.timeoutMinutes must be a whole number of at least 1, got ${minutes}`);
+  }
+}
+
+function validateActionRefs(refs: { [ownerRepo: string]: string }): { [ownerRepo: string]: string } {
+  for (const [action, ref] of Object.entries(refs)) {
+    if (!/^[\w.-]+\/[\w.-]+(\/[^@\s]+)?$/.test(action)) {
+      throw new Error(`actionRefs: '${action}' is not an action name like 'owner/repo' or 'owner/repo/path'`);
+    }
+    if (typeof ref !== 'string' || ref === '' || /[@\s]/.test(ref)) {
+      throw new Error(`actionRefs: the ref for '${action}' must be a non-empty string without '@' or whitespace, got '${ref}'`);
+    }
+  }
+  return { ...refs };
+}
+
+/**
+ * Rewrite the ref of every `uses` of a job or of one of its steps.
+ */
+function applyActionRefs(jobs: Record<string, github.Job>, refs: { [ownerRepo: string]: string }) {
+  const rewrite = (uses: string): string => {
+    const at = uses.lastIndexOf('@');
+    if (at === -1 || uses.startsWith('./') || uses.startsWith('docker://')) {
+      return uses;
+    }
+    const action = uses.slice(0, at);
+    return Object.prototype.hasOwnProperty.call(refs, action) ? `${action}@${refs[action]}` : uses;
+  };
+
+  for (const job of Object.values(jobs)) {
+    // a job that calls a reusable workflow has `uses` and no steps
+    const callsWorkflow = job as { uses?: string };
+    if (callsWorkflow.uses !== undefined) {
+      callsWorkflow.uses = rewrite(callsWorkflow.uses);
+    }
+    for (const step of job.steps ?? []) {
+      if (step.uses !== undefined) {
+        (step as { uses?: string }).uses = rewrite(step.uses);
+      }
+    }
   }
 }
 
