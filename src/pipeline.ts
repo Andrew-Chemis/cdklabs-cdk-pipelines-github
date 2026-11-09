@@ -225,6 +225,30 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
   readonly publishAssetsAuthRegion?: string;
 
   /**
+   * Environment variables set on the `Install` and `Build` steps of the
+   * synthesize job, and on no other step.
+   *
+   * Use this for values that only the steps that install and build need, such as
+   * a token for a private package registry. Unlike the `env` of the synth
+   * `ShellStep`, which applies to every step in the job (including actions in
+   * `preBuildSteps` and `postBuildSteps`), these variables are not visible to the
+   * other steps.
+   *
+   * @example const synthStepEnv = { NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' };
+   * @default - no additional environment variables
+   */
+  readonly synthStepEnv?: { [key: string]: string };
+
+  /**
+   * Permissions added to the synthesize job, merged over the ones the library
+   * sets (`contents: read` and `id-token`).
+   *
+   * @example const synthJobPermissions = { packages: JobPermission.READ };
+   * @default - no additional permissions
+   */
+  readonly synthJobPermissions?: github.JobPermissions;
+
+  /**
    * Job level settings that will be applied to all jobs in the workflow,
    * including synth and asset deploy jobs. The valid settings are 'if' and
    * 'timeoutMinutes'. You can use 'if' to run jobs only in specific repositories.
@@ -283,6 +307,8 @@ export class GitHubWorkflow extends PipelineBase {
   private readonly jobSettings?: JobSettings;
   private readonly deployJobNamer?: IDeployJobNamer;
   private readonly stageOfStack: Record<string, StageDeployment> = {};
+  private readonly synthStepEnv?: { [key: string]: string };
+  private readonly synthJobPermissions?: github.JobPermissions;
   private dockerAssetJobSettings?: DockerAssetJobSettings;
   // in order to keep track of if this pipeline has been built so we can
   // catch later calls to addWave() or addStage()
@@ -301,6 +327,8 @@ export class GitHubWorkflow extends PipelineBase {
     validateJobSettings(props.jobSettings);
     this.jobSettings = props.jobSettings;
     this.deployJobNamer = props.deployJobNamer;
+    this.synthStepEnv = props.synthStepEnv;
+    this.synthJobPermissions = props.synthJobPermissions;
     this.dockerAssetJobSettings = props.dockerAssetJobSettings;
 
     this.awsCredentials = this.getAwsCredentials(props);
@@ -794,9 +822,12 @@ export class GitHubWorkflow extends PipelineBase {
 
     const cdkOut = step.outputs[0];
 
+    const stepEnv = this.synthStepEnv ? { env: { ...this.synthStepEnv } } : {};
+
     const installSteps = step.installCommands.length > 0 ? [{
       name: 'Install',
       run: step.installCommands.join('\n'),
+      ...stepEnv,
     }] : [];
 
     return {
@@ -809,6 +840,7 @@ export class GitHubWorkflow extends PipelineBase {
           // The Synthesize job does not use the GitHub Action Role on its own, but it's possible
           // that it is being used in the preBuildSteps.
           idToken: this.awsCredentials.jobPermission(),
+          ...this.synthJobPermissions,
         },
         runsOn: this.runner.runsOn,
         needs: this.renderDependencies(node),
@@ -821,6 +853,7 @@ export class GitHubWorkflow extends PipelineBase {
           {
             name: 'Build',
             run: step.commands.join('\n'),
+            ...stepEnv,
           },
           ...this.postBuildSteps,
           ...this.stepsToUploadAssembly(cdkOut.directory),
