@@ -48,6 +48,30 @@ export interface JobSettings {
    * @see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idif
    */
   readonly if?: string;
+
+  /**
+   * jobs.<job_id>.timeout-minutes.
+   *
+   * The maximum number of minutes to let a job run before GitHub automatically
+   * cancels it. Must be a whole number of at least 1.
+   *
+   * @see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes
+   * @default - GitHub's default (360 minutes)
+   */
+  readonly timeoutMinutes?: number;
+}
+
+/**
+ * Chooses the name GitHub shows for the job that deploys a stack.
+ */
+export interface IDeployJobNamer {
+  /**
+   * The `name` of the job that deploys `stack`.
+   *
+   * @param stage the stage the stack is deployed in
+   * @param stack the stack that the job deploys
+   */
+  deployJobName(stage: StageDeployment, stack: StackDeployment): string;
 }
 
 /**
@@ -84,10 +108,62 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
   readonly concurrency?: github.ConcurrencyOptions;
 
   /**
+   * Permissions of the workflow, rendered as its top-level `permissions`.
+   *
+   * Jobs that set their own permissions (all the jobs this library creates do)
+   * are not affected by it, but it is the default for any job that does not,
+   * such as a job added with a custom step. An empty object renders
+   * `permissions: {}`, which grants nothing by default; it is not the same as
+   * leaving the property unset, which renders no `permissions` key.
+   *
+   * @example const workflowPermissions = {};
+   * @default - no top-level `permissions`
+   */
+  readonly workflowPermissions?: github.JobPermissions;
+
+  /**
+   * Whether the synthesize job may use the AWS credentials of the workflow.
+   *
+   * The job does not use them itself, but pre-build steps and the synth step
+   * can. With OpenID Connect credentials the job is granted the `id-token`
+   * permission so that they can. Set to `false` to leave `id-token` out of the
+   * synthesize job's permissions entirely.
+   *
+   * @default true
+   */
+  readonly synthUsesAwsCredentials?: boolean;
+
+  /**
    * Version of the [cdk-assets package](https://www.npmjs.com/package/cdk-assets) to use.
    * @default - automatic
    */
   readonly cdkAssetsVersion?: string;
+
+  /**
+   * Pass `--ignore-scripts` to the `npm install` of `cdk-assets` in the asset
+   * publishing jobs, so that lifecycle scripts of `cdk-assets` and its
+   * dependencies do not run on a runner that holds a checkout of the repository.
+   *
+   * @default false
+   */
+  readonly cdkAssetsInstallIgnoreScripts?: boolean;
+
+  /**
+   * Replace the ref of the GitHub Actions the workflow uses, for example to pin
+   * them to commit SHAs.
+   *
+   * Keys are the action as written before the `@` in a `uses:` (`owner/repo`,
+   * or `owner/repo/path` for an action in a subdirectory) and values are the ref
+   * to use after it, such as a commit SHA or a tag. The ref is applied to every
+   * step-level and job-level `uses` in the rendered workflow, including steps
+   * you supply yourself (`preBuildSteps`, `postBuildSteps`, `GitHubActionStep`).
+   * Local (`./`) and `docker://` references are never changed, and an entry that
+   * matches nothing is ignored.
+   *
+   * @example const actionRefs = { 'actions/checkout': '0123456789abcdef0123456789abcdef01234567' };
+   * @default - actions are used with the refs this library and your steps specify
+   */
+  readonly actionRefs?: { [ownerRepo: string]: string };
 
   /**
    * Indicates if the repository already contains a synthesized `cdk.out` directory, in which
@@ -175,9 +251,45 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
   readonly publishAssetsAuthRegion?: string;
 
   /**
+   * Environment variables set on the `Install` and `Build` steps of the
+   * synthesize job, and on no other step.
+   *
+   * Use this for values that only the steps that install and build need, such as
+   * a token for a private package registry. Unlike the `env` of the synth
+   * `ShellStep`, which applies to every step in the job (including actions in
+   * `preBuildSteps` and `postBuildSteps`), these variables are not visible to the
+   * other steps.
+   *
+   * @example const synthStepEnv = { NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' };
+   * @default - no additional environment variables
+   */
+  readonly synthStepEnv?: { [key: string]: string };
+
+  /**
+   * Permissions added to the synthesize job, merged over the ones the library
+   * sets (`contents: read` and `id-token`).
+   *
+   * @example const synthJobPermissions = { packages: JobPermission.READ };
+   * @default - no additional permissions
+   */
+  readonly synthJobPermissions?: github.JobPermissions;
+
+  /**
+   * Publish every asset from a job of its own.
+   *
+   * Each asset is a job that runs for seconds, and GitHub bills every job in
+   * whole minutes, so a stack with many assets costs many minutes. When `false`,
+   * the file assets of all stacks (including their templates) are published by
+   * one job and the docker assets by another, one asset after the other.
+   *
+   * @default true
+   */
+  readonly publishAssetsInParallel?: boolean;
+
+  /**
    * Job level settings that will be applied to all jobs in the workflow,
-   * including synth and asset deploy jobs. Currently the only valid setting
-   * is 'if'. You can use this to run jobs only in specific repositories.
+   * including synth and asset deploy jobs. The valid settings are 'if' and
+   * 'timeoutMinutes'. You can use 'if' to run jobs only in specific repositories.
    *
    * @see https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-only-run-job-for-specific-repository
    */
@@ -189,6 +301,14 @@ export interface GitHubWorkflowProps extends PipelineBaseProps {
    * @default - no additional settings
    */
   readonly dockerAssetJobSettings?: DockerAssetJobSettings;
+
+  /**
+   * Chooses the display name of the job that deploys each stack, in every wave.
+   * The job id is not affected.
+   *
+   * @default - `Deploy <stack artifact id>`
+   */
+  readonly deployJobNamer?: IDeployJobNamer;
 }
 
 /**
@@ -201,17 +321,22 @@ export class GitHubWorkflow extends PipelineBase {
 
   private readonly workflowTriggers: github.WorkflowTriggers;
   private readonly concurrency?: github.ConcurrencyOptions;
+  private readonly workflowPermissions?: github.JobPermissions;
+  private readonly synthUsesAwsCredentials: boolean;
   private readonly preSynthed: boolean;
   private readonly awsCredentials: AwsCredentialsProvider;
   private readonly dockerCredentials: DockerCredential[];
   private readonly cdkAssetsVersion?: string;
+  private readonly cdkAssetsInstallIgnoreScripts: boolean;
+  private readonly actionRefs?: { [ownerRepo: string]: string };
   private readonly buildContainer?: github.ContainerOptions;
   private readonly preBuildSteps: github.JobStep[];
   private readonly postBuildSteps: github.JobStep[];
   private readonly jobOutputs: Record<string, github.JobStepOutput[]> = {};
-  private readonly assetHashMap: Record<string, string> = {};
+  private readonly assetHashMap: Record<string, { jobId: string; outputName: string }> = {};
   private readonly runner: github.Runner;
   private readonly publishAssetsAuthRegion: string;
+  private readonly publishAssetsInParallel: boolean;
   private readonly stackProperties: Record<
     string,
     {
@@ -221,6 +346,10 @@ export class GitHubWorkflow extends PipelineBase {
     }
   > = {};
   private readonly jobSettings?: JobSettings;
+  private readonly deployJobNamer?: IDeployJobNamer;
+  private readonly stageOfStack: Record<string, StageDeployment> = {};
+  private readonly synthStepEnv?: { [key: string]: string };
+  private readonly synthJobPermissions?: github.JobPermissions;
   private dockerAssetJobSettings?: DockerAssetJobSettings;
   // in order to keep track of if this pipeline has been built so we can
   // catch later calls to addWave() or addStage()
@@ -230,11 +359,17 @@ export class GitHubWorkflow extends PipelineBase {
     super(scope, id, props);
 
     this.cdkAssetsVersion = props.cdkAssetsVersion;
+    this.cdkAssetsInstallIgnoreScripts = props.cdkAssetsInstallIgnoreScripts ?? false;
+    this.actionRefs = props.actionRefs ? validateActionRefs(props.actionRefs) : undefined;
     this.preSynthed = props.preSynthed ?? false;
     this.buildContainer = props.buildContainer;
     this.preBuildSteps = props.preBuildSteps ?? [];
     this.postBuildSteps = props.postBuildSteps ?? [];
+    validateJobSettings(props.jobSettings);
     this.jobSettings = props.jobSettings;
+    this.deployJobNamer = props.deployJobNamer;
+    this.synthStepEnv = props.synthStepEnv;
+    this.synthJobPermissions = props.synthJobPermissions;
     this.dockerAssetJobSettings = props.dockerAssetJobSettings;
 
     this.awsCredentials = this.getAwsCredentials(props);
@@ -263,8 +398,12 @@ export class GitHubWorkflow extends PipelineBase {
       };
     }
 
+    this.workflowPermissions = props.workflowPermissions;
+    this.synthUsesAwsCredentials = props.synthUsesAwsCredentials ?? true;
+
     this.runner = props.runner ?? github.Runner.UBUNTU_LATEST;
     this.publishAssetsAuthRegion = props.publishAssetsAuthRegion ?? 'us-west-2';
+    this.publishAssetsInParallel = props.publishAssetsInParallel ?? true;
   }
 
   /**
@@ -384,6 +523,7 @@ export class GitHubWorkflow extends PipelineBase {
 
   private addStackProps(stacks: StackDeployment[], key: string, value: any) {
     if (value === undefined) { return; }
+    if (key === 'settings') { validateJobSettings(value); }
     for (const stack of stacks) {
       this.stackProperties[stack.stackArtifactId] = {
         ...this.stackProperties[stack.stackArtifactId],
@@ -402,10 +542,19 @@ export class GitHubWorkflow extends PipelineBase {
 
     const jobs = new Array<Job>();
 
+    for (const wave of this.waves) {
+      for (const stage of wave.stages) {
+        for (const stack of stage.stacks) {
+          this.stageOfStack[stack.stackArtifactId] = stage;
+        }
+      }
+    }
+
     const structure = new PipelineGraph(this, {
       selfMutation: false,
       publishTemplate: true,
       prepareStep: false, // we create and execute the changeset in a single job
+      singlePublisherPerAssetType: !this.publishAssetsInParallel,
     });
 
     for (const stageNode of flatten(structure.graph.sortedChildren())) {
@@ -441,6 +590,10 @@ export class GitHubWorkflow extends PipelineBase {
     // Update jobs with late-bound output requests
     this.insertJobOutputs(jobmap);
 
+    if (this.actionRefs) {
+      applyActionRefs(jobmap, this.actionRefs);
+    }
+
     const workflow = {
       name: this.workflowName,
       on: snakeCaseKeys(this.workflowTriggers, '_'),
@@ -450,6 +603,7 @@ export class GitHubWorkflow extends PipelineBase {
           'cancel-in-progress': this.concurrency.cancelInProgress,
         },
       } : {}),
+      ...(this.workflowPermissions ? { permissions: snakeCaseKeys(this.workflowPermissions) } : {}),
       jobs: jobmap,
     };
 
@@ -539,6 +693,7 @@ export class GitHubWorkflow extends PipelineBase {
     }
 
     const installSuffix = this.cdkAssetsVersion ? `@${this.cdkAssetsVersion}` : '';
+    const installFlags = this.cdkAssetsInstallIgnoreScripts ? ' --ignore-scripts' : '';
     const cdkoutDir = options.assemblyDir;
     const jobId = node.uniqueId;
     const { assetId, assetManifestPath } = assets[0];
@@ -572,9 +727,15 @@ export class GitHubWorkflow extends PipelineBase {
       return `npx cdk-assets --path "${relativeToAssembly(asset.assetManifestPath)}" --verbose publish "${asset.assetSelector}"`;
     }));
 
-    // we need the jobId to reference the outputs later
-    this.assetHashMap[assetId] = jobId;
-    fileContents.push(`echo '${ASSET_HASH_NAME}=${assetId}' >> $GITHUB_OUTPUT`);
+    // The deploy jobs reference the hash of their stack's template through an
+    // output of the job that publishes it, so remember which job and output.
+    const hashOutputs = this.publishAssetsInParallel
+      ? [{ assetId, outputName: ASSET_HASH_NAME }]
+      : this.templateHashOutputs(assets);
+    for (const output of hashOutputs) {
+      this.assetHashMap[output.assetId] = { jobId, outputName: output.outputName };
+      fileContents.push(`echo '${output.outputName}=${output.assetId}' >> $GITHUB_OUTPUT`);
+    }
 
     const publishStepFile = posixPath(path.join(path.dirname(relativeToAssembly(assetManifestPath)), `publish-${jobId}-step.sh`));
     mkdirSync(path.dirname(publishStepFile), { recursive: true });
@@ -594,14 +755,17 @@ export class GitHubWorkflow extends PipelineBase {
         needs: this.renderDependencies(node),
         permissions,
         runsOn: this.runner.runsOn,
-        outputs: {
-          [ASSET_HASH_NAME]: `\${{ steps.Publish.outputs.${ASSET_HASH_NAME} }}`,
-        },
+        ...(hashOutputs.length > 0 ? {
+          outputs: Object.fromEntries(hashOutputs.map(({ outputName }) => [
+            outputName,
+            `\${{ steps.Publish.outputs.${outputName} }}`,
+          ])),
+        } : {}),
         steps: [
           ...this.stepsToDownloadAssembly(cdkoutDir),
           {
             name: 'Install',
-            run: `npm install --no-save cdk-assets${installSuffix}`,
+            run: `npm install --no-save${installFlags} cdk-assets${installSuffix}`,
           },
           ...this.stepsToConfigureAws(this.publishAssetsAuthRegion),
           ...dockerLoginSteps,
@@ -610,6 +774,35 @@ export class GitHubWorkflow extends PipelineBase {
         ],
       },
     };
+  }
+
+  /**
+   * The outputs of a job that publishes many assets: one for each stack template.
+   *
+   * The name comes from the stack's asset manifest, not from the hash of the
+   * template, so adding or changing an asset does not change the workflow.
+   * Names that collide get a numeric suffix. Stacks with the same template share
+   * one asset, and so one output.
+   */
+  private templateHashOutputs(assets: StackAsset[]): Array<{ assetId: string; outputName: string }> {
+    const outputs: Array<{ assetId: string; outputName: string }> = [];
+    const names = new Set<string>();
+    for (const asset of assets) {
+      if (!asset.isTemplate || outputs.some((o) => o.assetId === asset.assetId)) {
+        continue;
+      }
+      // Lower case: the keys of a job's outputs are converted from camel case when the
+      // workflow is rendered, and the reference to the output must use the converted name.
+      const stackName = path.basename(asset.assetManifestPath).replace(/\.assets\.json$/, '').replace(/[^A-Za-z0-9_-]/g, '_').toLowerCase();
+      const base = `${ASSET_HASH_NAME}-${stackName}`;
+      let outputName = base;
+      for (let suffix = 2; names.has(outputName); suffix++) {
+        outputName = `${base}-${suffix}`;
+      }
+      names.add(outputName);
+      outputs.push({ assetId: asset.assetId, outputName });
+    }
+    return outputs;
   }
 
   private jobForDeploy(node: AGraphNode, stack: StackDeployment, _captureOutputs: boolean): Job {
@@ -634,10 +827,11 @@ export class GitHubWorkflow extends PipelineBase {
 
     const replaceAssetHash = (template: string) => {
       const hash = path.parse(template.split('/').pop() ?? '').name;
-      if (this.assetHashMap[hash] === undefined) {
+      const publisher = this.assetHashMap[hash];
+      if (publisher === undefined) {
         throw new Error(`Template asset hash ${hash} not found.`);
       }
-      const updated_template = template.replace(hash, `\${{ needs.${this.assetHashMap[hash]}.outputs.${ASSET_HASH_NAME} }}`);
+      const updated_template = template.replace(hash, `\${{ needs.${publisher.jobId}.outputs.${publisher.outputName} }}`);
       return process.env.CDK_AWS_PARTITION == 'aws-cn'
         ? updated_template.replace('.amazonaws.com', '.amazonaws.com.cn')
         : updated_template;
@@ -662,7 +856,7 @@ export class GitHubWorkflow extends PipelineBase {
     return {
       id: node.uniqueId,
       definition: {
-        name: `Deploy ${stack.stackArtifactId}`,
+        name: this.deployJobNameOf(stack),
         ...this.renderJobSettingParameters(),
         ...this.stackProperties[stack.stackArtifactId]?.settings,
         permissions: {
@@ -684,6 +878,17 @@ export class GitHubWorkflow extends PipelineBase {
     };
   }
 
+  private deployJobNameOf(stack: StackDeployment): string {
+    if (!this.deployJobNamer) {
+      return `Deploy ${stack.stackArtifactId}`;
+    }
+    const name = this.deployJobNamer.deployJobName(this.stageOfStack[stack.stackArtifactId], stack);
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error(`deployJobNamer returned an empty name for stack '${stack.stackArtifactId}'`);
+    }
+    return name;
+  }
+
   private jobForBuildStep(node: AGraphNode, step: Step): Job {
     if (!(step instanceof ShellStep)) {
       throw new Error('synthStep must be a ScriptStep');
@@ -703,9 +908,12 @@ export class GitHubWorkflow extends PipelineBase {
 
     const cdkOut = step.outputs[0];
 
+    const stepEnv = this.synthStepEnv ? { env: { ...this.synthStepEnv } } : {};
+
     const installSteps = step.installCommands.length > 0 ? [{
       name: 'Install',
       run: step.installCommands.join('\n'),
+      ...stepEnv,
     }] : [];
 
     return {
@@ -717,7 +925,8 @@ export class GitHubWorkflow extends PipelineBase {
           contents: github.JobPermission.READ,
           // The Synthesize job does not use the GitHub Action Role on its own, but it's possible
           // that it is being used in the preBuildSteps.
-          idToken: this.awsCredentials.jobPermission(),
+          ...(this.synthUsesAwsCredentials ? { idToken: this.awsCredentials.jobPermission() } : {}),
+          ...this.synthJobPermissions,
         },
         runsOn: this.runner.runsOn,
         needs: this.renderDependencies(node),
@@ -730,6 +939,7 @@ export class GitHubWorkflow extends PipelineBase {
           {
             name: 'Build',
             run: step.commands.join('\n'),
+            ...stepEnv,
           },
           ...this.postBuildSteps,
           ...this.stepsToUploadAssembly(cdkOut.directory),
@@ -951,6 +1161,52 @@ export class GitHubWorkflow extends PipelineBase {
       return { environment: environment.name };
     }
     return { environment };
+  }
+}
+
+function validateJobSettings(settings?: JobSettings) {
+  const minutes = settings?.timeoutMinutes;
+  if (minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1)) {
+    throw new Error(`jobSettings.timeoutMinutes must be a whole number of at least 1, got ${minutes}`);
+  }
+}
+
+function validateActionRefs(refs: { [ownerRepo: string]: string }): { [ownerRepo: string]: string } {
+  for (const [action, ref] of Object.entries(refs)) {
+    if (!/^[\w.-]+\/[\w.-]+(\/[^@\s]+)?$/.test(action)) {
+      throw new Error(`actionRefs: '${action}' is not an action name like 'owner/repo' or 'owner/repo/path'`);
+    }
+    if (typeof ref !== 'string' || ref === '' || /[@\s]/.test(ref)) {
+      throw new Error(`actionRefs: the ref for '${action}' must be a non-empty string without '@' or whitespace, got '${ref}'`);
+    }
+  }
+  return { ...refs };
+}
+
+/**
+ * Rewrite the ref of every `uses` of a job or of one of its steps.
+ */
+function applyActionRefs(jobs: Record<string, github.Job>, refs: { [ownerRepo: string]: string }) {
+  const rewrite = (uses: string): string => {
+    const at = uses.lastIndexOf('@');
+    if (at === -1 || uses.startsWith('./') || uses.startsWith('docker://')) {
+      return uses;
+    }
+    const action = uses.slice(0, at);
+    return Object.prototype.hasOwnProperty.call(refs, action) ? `${action}@${refs[action]}` : uses;
+  };
+
+  for (const job of Object.values(jobs)) {
+    // a job that calls a reusable workflow has `uses` and no steps
+    const callsWorkflow = job as { uses?: string };
+    if (callsWorkflow.uses !== undefined) {
+      callsWorkflow.uses = rewrite(callsWorkflow.uses);
+    }
+    for (const step of job.steps ?? []) {
+      if (step.uses !== undefined) {
+        (step as { uses?: string }).uses = rewrite(step.uses);
+      }
+    }
   }
 }
 
