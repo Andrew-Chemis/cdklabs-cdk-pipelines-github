@@ -16,7 +16,7 @@ import {
   Runner,
   DockerCredential,
   JobPermission,
-} from 'cdk-pipelines-github';
+} from '@Andrew-Chemis/cdk-pipelines-github';
 
 const BETA_ENV = {
   account: '000000000000',
