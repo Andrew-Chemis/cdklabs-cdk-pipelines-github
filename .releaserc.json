@@ -69,7 +69,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "npm version ${nextRelease.version} --no-git-tag-version --allow-same-version && node_modules/.bin/projen compile && node_modules/.bin/projen post-compile && node_modules/.bin/projen package:js",
+        "prepareCmd": "rm -rf dist/js && npm version ${nextRelease.version} --no-git-tag-version --allow-same-version && node_modules/.bin/projen compile && node_modules/.bin/projen post-compile && node_modules/.bin/projen package:js",
         "publishCmd": "npm publish dist/js/*.tgz --registry https://npm.pkg.github.com"
       }
     ],

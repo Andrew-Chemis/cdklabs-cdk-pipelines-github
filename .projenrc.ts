@@ -131,10 +131,12 @@ new JsonFile(project, '.releaserc.json', {
       [
         // jsii bakes the package version into lib/ and .jsii, so the version is
         // set before the library is compiled and packed, then the tarball is
-        // published.
+        // published. The Build step has already packed a 0.0.0 tarball into
+        // dist/js; it is removed first so publishCmd's glob matches exactly one
+        // file (two make `npm publish` fail with EUSAGE).
         '@semantic-release/exec',
         {
-          prepareCmd: 'npm version ${nextRelease.version} --no-git-tag-version --allow-same-version && node_modules/.bin/projen compile && node_modules/.bin/projen post-compile && node_modules/.bin/projen package:js',
+          prepareCmd: 'rm -rf dist/js && npm version ${nextRelease.version} --no-git-tag-version --allow-same-version && node_modules/.bin/projen compile && node_modules/.bin/projen post-compile && node_modules/.bin/projen package:js',
           publishCmd: 'npm publish dist/js/*.tgz --registry ' + REGISTRY_URL,
         },
       ],
