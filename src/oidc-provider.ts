@@ -12,6 +12,8 @@ const GITHUB_OIDC_THUMBPRINTS = [
   '1c58a3a8518e8759bf075b76b750d4f2df264fcd',
 ];
 
+const DEFAULT_AUDIENCE = 'sts.amazonaws.com';
+
 /**
  * Properties for the GitHubActionRole construct.
  */
@@ -21,6 +23,9 @@ export interface GitHubActionRoleProps {
    * Each entry should be your GitHub username and repository passed in as a
    * single string.
    * An entry `owner/repo` is equivalent to the subjectClaim `repo:owner/repo:*`.
+   *
+   * An entry must name one repository: an entry containing `*` is rejected,
+   * because it would let repositories that were not named assume the role.
    *
    * For example, `['owner/repo1', 'owner/repo2'].
    */
@@ -32,9 +37,24 @@ export interface GitHubActionRoleProps {
    * A subject claim can include `*` and `?` wildcards according to the `StringLike`
    * condition operator.
    *
+   * A claim that is exactly `*`, or that starts with `repo:*`, is rejected,
+   * because it would trust any repository. A wildcard after the repository,
+   * such as `repo:owner/repo1:ref:refs/heads/*`, is accepted.
+   *
    * For example, `['repo:owner/repo1:ref:refs/heads/branch1', 'repo:owner/repo1:environment:prod']`
    */
   readonly subjectClaims?: string[];
+
+  /**
+   * The `aud` claim a GitHub token must carry to assume the role, enforced
+   * with a `StringEquals` condition next to the `sub` condition.
+   *
+   * Set it only when the workflow requests a custom audience (the `audience`
+   * input of `aws-actions/configure-aws-credentials`).
+   *
+   * @default 'sts.amazonaws.com'
+   */
+  readonly audience?: string;
 
   /**
    * The name of the Oidc role.
@@ -106,6 +126,8 @@ export class GitHubActionRole extends Construct {
   constructor(scope: Construct, id: string, props: GitHubActionRoleProps) {
     super(scope, id);
 
+    validateTrust(props);
+
     const rawEndpoint = 'token.actions.githubusercontent.com';
     const providerUrl = `https://${rawEndpoint}`;
 
@@ -122,6 +144,9 @@ export class GitHubActionRole extends Construct {
       {
         StringLike: {
           [`${rawEndpoint}:sub`]: formatRepos(props.repos ?? []).concat(props.subjectClaims ?? []),
+        },
+        StringEquals: {
+          [`${rawEndpoint}:aud`]: props.audience ?? DEFAULT_AUDIENCE,
         },
       },
       'sts:AssumeRoleWithWebIdentity',
@@ -174,4 +199,28 @@ function formatRepos(repos: string[]) {
     formattedRepos.push(`repo:${repo}:*`);
   }
   return formattedRepos;
+}
+
+/**
+ * Reject trust that is wider than the repositories or claims named, and an
+ * empty audience (which no token carries).
+ */
+function validateTrust(props: GitHubActionRoleProps) {
+  const wildcardRepos = (props.repos ?? []).filter((repo) => repo.includes('*'));
+  if (wildcardRepos.length > 0) {
+    throw new Error(
+      `GitHubActionRole does not permit wildcards in repos (${wildcardRepos.join(', ')}): a '*' can widen the trust to repositories that were not named. Pass explicit repository names, for example repos: ['owner/repo'].`,
+    );
+  }
+
+  const wideningClaims = (props.subjectClaims ?? []).filter((claim) => claim === '*' || claim.startsWith('repo:*'));
+  if (wideningClaims.length > 0) {
+    throw new Error(
+      `GitHubActionRole does not permit subjectClaims that trust any repository (${wideningClaims.join(', ')}): a bare '*' or a claim starting with 'repo:*' can widen the trust to repositories that were not named. Scope the claim to one repository, for example 'repo:owner/repo:ref:refs/heads/main' (a trailing wildcard such as 'refs/heads/*' is accepted).`,
+    );
+  }
+
+  if (props.audience !== undefined && props.audience === '') {
+    throw new Error('GitHubActionRole audience must not be empty');
+  }
 }
