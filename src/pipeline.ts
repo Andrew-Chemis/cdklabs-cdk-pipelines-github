@@ -925,9 +925,8 @@ export class GitHubWorkflow extends PipelineBase {
           contents: github.JobPermission.READ,
           // The Synthesize job does not use the GitHub Action Role on its own, but it's possible
           // that it is being used in the preBuildSteps.
-          idToken: this.awsCredentials.jobPermission(),
-          ...this.synthJobPermissions,
           ...(this.synthUsesAwsCredentials ? { idToken: this.awsCredentials.jobPermission() } : {}),
+          ...this.synthJobPermissions,
         },
         runsOn: this.runner.runsOn,
         needs: this.renderDependencies(node),
