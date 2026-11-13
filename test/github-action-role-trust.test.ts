@@ -18,14 +18,20 @@ function trustCondition(props: ConstructorParameters<typeof GitHubActionRole>[2]
 }
 
 describe('audience', () => {
-  test('the trust policy requires sts.amazonaws.com by default', () => {
+  test('there is no audience condition by default, as upstream', () => {
     expect(trustCondition({ repos: ['owner/repo'] })).toEqual({
+      StringLike: { [SUB]: ['repo:owner/repo:*'] },
+    });
+  });
+
+  test('an audience adds the condition', () => {
+    expect(trustCondition({ repos: ['owner/repo'], audience: 'sts.amazonaws.com' })).toEqual({
       StringLike: { [SUB]: ['repo:owner/repo:*'] },
       StringEquals: { [AUD]: 'sts.amazonaws.com' },
     });
   });
 
-  test('a custom audience replaces the default', () => {
+  test('a custom audience is used as given', () => {
     const condition = trustCondition({ repos: ['owner/repo'], audience: 'my-audience' });
     expect(condition.StringEquals).toEqual({ [AUD]: 'my-audience' });
     expect(condition.StringLike).toEqual({ [SUB]: ['repo:owner/repo:*'] });
@@ -36,6 +42,7 @@ describe('audience', () => {
     new GitHubActionRole(stack, 'Role', {
       subjectClaims: ['repo:owner/repo:ref:refs/heads/main'],
       provider: GitHubActionRole.existingGitHubActionsProvider(stack),
+      audience: 'sts.amazonaws.com',
     });
     Template.fromStack(stack).hasResourceProperties('AWS::IAM::Role', {
       AssumeRolePolicyDocument: {
@@ -69,17 +76,17 @@ describe('wildcards in repos', () => {
     ['*/repo'],
     ['owner/re*'],
   ])('%s is rejected', (repo) => {
-    expect(() => trustCondition({ repos: ['owner/other', repo] })).toThrow(
+    expect(() => trustCondition({ repos: ['owner/other', repo], rejectWildcardTrust: true })).toThrow(
       new RegExp(`does not permit wildcards in repos \\(${repo.replace(/\*/g, '\\*').replace('/', '\\/')}\\)`),
     );
   });
 
   test('every offending entry is named', () => {
-    expect(() => trustCondition({ repos: ['a/*', 'b/repo', 'c/*'] })).toThrow(/\(a\/\*, c\/\*\)/);
+    expect(() => trustCondition({ repos: ['a/*', 'b/repo', 'c/*'], rejectWildcardTrust: true })).toThrow(/\(a\/\*, c\/\*\)/);
   });
 
   test('named repositories are accepted', () => {
-    expect(trustCondition({ repos: ['owner/one', 'owner/two'] }).StringLike[SUB]).toEqual([
+    expect(trustCondition({ repos: ['owner/one', 'owner/two'], rejectWildcardTrust: true }).StringLike[SUB]).toEqual([
       'repo:owner/one:*',
       'repo:owner/two:*',
     ]);
@@ -93,7 +100,7 @@ describe('wildcards in subjectClaims', () => {
     ['repo:*:ref:refs/heads/main'],
     ['repo:*/repo:*'],
   ])('%s is rejected', (claim) => {
-    expect(() => trustCondition({ subjectClaims: ['repo:owner/repo:environment:prod', claim] })).toThrow(
+    expect(() => trustCondition({ subjectClaims: ['repo:owner/repo:environment:prod', claim], rejectWildcardTrust: true })).toThrow(
       /does not permit subjectClaims that trust any repository/,
     );
   });
@@ -105,11 +112,24 @@ describe('wildcards in subjectClaims', () => {
     ['repo:owner/repo:environment:prod'],
     ['sub?ect'],
   ])('%s is accepted', (claim) => {
-    expect(trustCondition({ subjectClaims: [claim] }).StringLike[SUB]).toEqual([claim]);
+    expect(trustCondition({ subjectClaims: [claim], rejectWildcardTrust: true }).StringLike[SUB]).toEqual([claim]);
   });
 
   test('a repos entry and a claim are checked independently', () => {
-    expect(() => trustCondition({ repos: ['owner/repo'], subjectClaims: ['*'] })).toThrow(/subjectClaims/);
-    expect(() => trustCondition({ repos: ['*'], subjectClaims: ['repo:owner/repo:*'] })).toThrow(/repos/);
+    expect(() => trustCondition({ repos: ['owner/repo'], subjectClaims: ['*'], rejectWildcardTrust: true })).toThrow(/subjectClaims/);
+    expect(() => trustCondition({ repos: ['*'], subjectClaims: ['repo:owner/repo:*'], rejectWildcardTrust: true })).toThrow(/repos/);
+  });
+});
+
+describe('rejectWildcardTrust is off by default, as upstream', () => {
+  test('wildcards are accepted', () => {
+    expect(trustCondition({ repos: ['owner/*'], subjectClaims: ['repo:*'] }).StringLike[SUB]).toEqual([
+      'repo:owner/*:*',
+      'repo:*',
+    ]);
+  });
+
+  test('false is the same as unset', () => {
+    expect(() => trustCondition({ repos: ['*'], rejectWildcardTrust: false })).not.toThrow();
   });
 });

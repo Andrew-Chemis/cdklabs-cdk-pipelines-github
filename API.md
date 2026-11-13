@@ -1813,6 +1813,7 @@ const gitHubActionRoleProps: GitHubActionRoleProps = { ... }
 | --- | --- | --- |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.audience">audience</a></code> | <code>string</code> | The `aud` claim a GitHub token must carry to assume the role, enforced with a `StringEquals` condition next to the `sub` condition. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.provider">provider</a></code> | <code>aws-cdk-lib.aws_iam.IOpenIdConnectProvider</code> | The GitHub OpenId Connect Provider. Must have provider url `https://token.actions.githubusercontent.com`. The audience must be `sts:amazonaws.com`. |
+| <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.rejectWildcardTrust">rejectWildcardTrust</a></code> | <code>boolean</code> | Reject `repos` entries that contain `*`, and `subjectClaims` that are exactly `*` or start with `repo:*`, because they let repositories that were not named assume the role. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.repos">repos</a></code> | <code>string[]</code> | A list of GitHub repositories you want to be able to access the IAM role. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.roleName">roleName</a></code> | <code>string</code> | The name of the Oidc role. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.subjectClaims">subjectClaims</a></code> | <code>string[]</code> | A list of subject claims allowed to access the IAM role. |
@@ -1827,14 +1828,22 @@ public readonly audience: string;
 ```
 
 - *Type:* string
-- *Default:* 'sts.amazonaws.com'
+- *Default:* no `aud` condition, as in upstream `cdk-pipelines-github`
 
 The `aud` claim a GitHub token must carry to assume the role, enforced with a `StringEquals` condition next to the `sub` condition.
 
-Set it only when the workflow requests a custom audience (the `audience`
-input of `aws-actions/configure-aws-credentials`).
+`aws-actions/configure-aws-credentials` requests `sts.amazonaws.com`
+unless its `audience` input is set, so that is the value to use in most
+cases.
 
 ---
+
+*Example*
+
+```typescript
+const audience = 'sts.amazonaws.com';
+```
+
 
 ##### `provider`<sup>Optional</sup> <a name="provider" id="@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.provider"></a>
 
@@ -1852,6 +1861,19 @@ have a provider with the same url, a new provider cannot be created for you.
 
 ---
 
+##### `rejectWildcardTrust`<sup>Optional</sup> <a name="rejectWildcardTrust" id="@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.rejectWildcardTrust"></a>
+
+```typescript
+public readonly rejectWildcardTrust: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Reject `repos` entries that contain `*`, and `subjectClaims` that are exactly `*` or start with `repo:*`, because they let repositories that were not named assume the role.
+
+---
+
 ##### `repos`<sup>Optional</sup> <a name="repos" id="@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleProps.property.repos"></a>
 
 ```typescript
@@ -1866,8 +1888,8 @@ Each entry should be your GitHub username and repository passed in as a
 single string.
 An entry `owner/repo` is equivalent to the subjectClaim `repo:owner/repo:*`.
 
-An entry must name one repository: an entry containing `*` is rejected,
-because it would let repositories that were not named assume the role.
+With `rejectWildcardTrust`, an entry containing `*` is rejected, because
+it would let repositories that were not named assume the role.
 
 For example, `['owner/repo1', 'owner/repo2'].
 
@@ -1900,9 +1922,10 @@ See https://docs.github.com/en/actions/deployment/security-hardening-your-deploy
 A subject claim can include `*` and `?` wildcards according to the `StringLike`
 condition operator.
 
-A claim that is exactly `*`, or that starts with `repo:*`, is rejected,
-because it would trust any repository. A wildcard after the repository,
-such as `repo:owner/repo1:ref:refs/heads/*`, is accepted.
+With `rejectWildcardTrust`, a claim that is exactly `*`, or that starts
+with `repo:*`, is rejected, because it would trust any repository. A
+wildcard after the repository, such as `repo:owner/repo1:ref:refs/heads/*`,
+is accepted.
 
 For example, `['repo:owner/repo1:ref:refs/heads/branch1', 'repo:owner/repo1:environment:prod']`
 
@@ -1947,6 +1970,7 @@ const gitHubActionRoleStageProps: GitHubActionRoleStageProps = { ... }
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.stackCapabilities">stackCapabilities</a></code> | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.StackCapabilities">StackCapabilities</a>[]</code> | In some cases, you must explicitly acknowledge that your CloudFormation stack template contains certain capabilities in order for CloudFormation to create the stack. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.audience">audience</a></code> | <code>string</code> | The `aud` claim a GitHub token must carry to assume the role, enforced with a `StringEquals` condition next to the `sub` condition. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.provider">provider</a></code> | <code>aws-cdk-lib.aws_iam.IOpenIdConnectProvider</code> | The GitHub OpenId Connect Provider. Must have provider url `https://token.actions.githubusercontent.com`. The audience must be `sts:amazonaws.com`. |
+| <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.rejectWildcardTrust">rejectWildcardTrust</a></code> | <code>boolean</code> | Reject `repos` entries that contain `*`, and `subjectClaims` that are exactly `*` or start with `repo:*`, because they let repositories that were not named assume the role. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.repos">repos</a></code> | <code>string[]</code> | A list of GitHub repositories you want to be able to access the IAM role. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.roleName">roleName</a></code> | <code>string</code> | The name of the Oidc role. |
 | <code><a href="#@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.subjectClaims">subjectClaims</a></code> | <code>string[]</code> | A list of subject claims allowed to access the IAM role. |
@@ -2019,14 +2043,22 @@ public readonly audience: string;
 ```
 
 - *Type:* string
-- *Default:* 'sts.amazonaws.com'
+- *Default:* no `aud` condition, as in upstream `cdk-pipelines-github`
 
 The `aud` claim a GitHub token must carry to assume the role, enforced with a `StringEquals` condition next to the `sub` condition.
 
-Set it only when the workflow requests a custom audience (the `audience`
-input of `aws-actions/configure-aws-credentials`).
+`aws-actions/configure-aws-credentials` requests `sts.amazonaws.com`
+unless its `audience` input is set, so that is the value to use in most
+cases.
 
 ---
+
+*Example*
+
+```typescript
+const audience = 'sts.amazonaws.com';
+```
+
 
 ##### `provider`<sup>Optional</sup> <a name="provider" id="@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.provider"></a>
 
@@ -2044,6 +2076,19 @@ have a provider with the same url, a new provider cannot be created for you.
 
 ---
 
+##### `rejectWildcardTrust`<sup>Optional</sup> <a name="rejectWildcardTrust" id="@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.rejectWildcardTrust"></a>
+
+```typescript
+public readonly rejectWildcardTrust: boolean;
+```
+
+- *Type:* boolean
+- *Default:* false
+
+Reject `repos` entries that contain `*`, and `subjectClaims` that are exactly `*` or start with `repo:*`, because they let repositories that were not named assume the role.
+
+---
+
 ##### `repos`<sup>Optional</sup> <a name="repos" id="@Andrew-Chemis/cdk-pipelines-github.GitHubActionRoleStageProps.property.repos"></a>
 
 ```typescript
@@ -2058,8 +2103,8 @@ Each entry should be your GitHub username and repository passed in as a
 single string.
 An entry `owner/repo` is equivalent to the subjectClaim `repo:owner/repo:*`.
 
-An entry must name one repository: an entry containing `*` is rejected,
-because it would let repositories that were not named assume the role.
+With `rejectWildcardTrust`, an entry containing `*` is rejected, because
+it would let repositories that were not named assume the role.
 
 For example, `['owner/repo1', 'owner/repo2'].
 
@@ -2092,9 +2137,10 @@ See https://docs.github.com/en/actions/deployment/security-hardening-your-deploy
 A subject claim can include `*` and `?` wildcards according to the `StringLike`
 condition operator.
 
-A claim that is exactly `*`, or that starts with `repo:*`, is rejected,
-because it would trust any repository. A wildcard after the repository,
-such as `repo:owner/repo1:ref:refs/heads/*`, is accepted.
+With `rejectWildcardTrust`, a claim that is exactly `*`, or that starts
+with `repo:*`, is rejected, because it would trust any repository. A
+wildcard after the repository, such as `repo:owner/repo1:ref:refs/heads/*`,
+is accepted.
 
 For example, `['repo:owner/repo1:ref:refs/heads/branch1', 'repo:owner/repo1:environment:prod']`
 
